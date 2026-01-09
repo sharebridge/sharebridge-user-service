@@ -4,7 +4,20 @@
 
 ## Overview
 
-This repository is part of the ShareBridge project - a platform for dignified charitable giving.
+This repository contains the **User Service** - manages user authentication, profiles, and preferences for all ShareBridge users.
+
+**Key Responsibilities:**
+- 🔐 User registration and authentication (phone/email)
+- 👤 User profile management (donors, seekers, admins)
+- 🔑 Password reset and account recovery
+- ✅ Phone/email verification (OTP)
+- ⚙️ User preferences and settings
+- 🌐 Language and notification preferences
+- 🏷️ User role and permission management
+- 📊 User activity tracking and analytics
+- 🚫 Account suspension and moderation
+
+**Technology Stack:** Node.js with NestJS or Python with FastAPI + PostgreSQL
 
 For overall project context, see the [main ShareBridge repository](https://github.com/sharebridge/sharebridge).
 
