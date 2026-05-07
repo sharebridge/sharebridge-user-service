@@ -48,7 +48,7 @@ The prompting/ folder contains:
 
 ## Contributing
 
-See the [main repository's CALL_FOR_CONTRIBUTORS.md](https://github.com/sharebridge/sharebridge/blob/main/CALL_FOR_CONTRIBUTORS.md) for:
+See the [main repository's CALL_FOR_CONTRIBUTORS.md](https://github.com/sharebridge/sharebridge/blob/main/development/CALL_FOR_CONTRIBUTORS.md) for:
 - How to contribute (technical and non-technical)
 - Joining GitHub Discussions
 - Submitting prompts and feature ideas
