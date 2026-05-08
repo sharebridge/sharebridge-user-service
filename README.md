@@ -21,22 +21,6 @@ This repository contains the **User Service** - manages user authentication, pro
 
 For overall project context, see the [main ShareBridge repository](https://github.com/sharebridge/sharebridge).
 
-## AI-Powered Development
-
-This project uses AI-assisted development. Code and documentation are generated through prompts stored in the /prompting folder.
-
-## Prompting Folder
-
-The prompting/ folder contains:
-- All prompts used to generate code for this component
-- Feature requests and requirements in natural language
-- AI model instructions and specifications
-- Prompt templates for future development
-
-**Transparency:** Anyone can see how features were specified and generated.  
-**Reproducibility:** Use similar prompts to regenerate or modify components.  
-**Collaboration:** Non-coders can contribute by writing or refining prompts.
-
 ## Repository Status
 
 🚧 **Status:** Initial Setup  
