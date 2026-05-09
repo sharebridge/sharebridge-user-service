@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
+import { verifyAuthToken } from "../src/tokenService.js";
 import { createUserServiceServer } from "../src/server.js";
 import { UserStore } from "../src/userStore.js";
 
@@ -25,10 +26,20 @@ async function startServer() {
   };
 }
 
-test("issues demo token and creates donor user model", async () => {
+async function issueToken(baseUrl, userId) {
+  const response = await fetch(`${baseUrl}/v1/auth/token`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ user_id: userId })
+  });
+  const body = await response.json();
+  return body.token;
+}
+
+test("issues signed token and creates donor user model", async () => {
   const app = await startServer();
   try {
-    const response = await fetch(`${app.baseUrl}/v1/auth/demo-token`, {
+    const response = await fetch(`${app.baseUrl}/v1/auth/token`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -39,7 +50,9 @@ test("issues demo token and creates donor user model", async () => {
     });
     assert.equal(response.status, 200);
     const payload = await response.json();
-    assert.equal(payload.token, "demo.donor-001");
+    const claims = verifyAuthToken(payload.token);
+    assert.equal(claims.sub, "donor-001");
+    assert.equal(payload.token_type, "Bearer");
     assert.equal(payload.user.id, "donor-001");
     assert.equal(payload.user.phone, "+911234567890");
     assert.equal(payload.user.email, "donor@example.com");
@@ -52,13 +65,14 @@ test("issues demo token and creates donor user model", async () => {
 test("upserts donor presets and returns deduped set", async () => {
   const app = await startServer();
   try {
+    const token = await issueToken(app.baseUrl, "donor-abc");
     const putResponse = await fetch(
       `${app.baseUrl}/v1/users/donor-abc/donor-presets`,
       {
         method: "PUT",
         headers: {
           "content-type": "application/json",
-          authorization: "Bearer demo.donor-abc"
+          authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
           presets: [
@@ -90,7 +104,7 @@ test("upserts donor presets and returns deduped set", async () => {
     const getResponse = await fetch(
       `${app.baseUrl}/v1/users/donor-abc/donor-presets`,
       {
-        headers: { authorization: "Bearer demo.donor-abc" }
+        headers: { authorization: `Bearer ${token}` }
       }
     );
     assert.equal(getResponse.status, 200);
@@ -112,10 +126,11 @@ test("returns 401 and 403 for auth failures", async () => {
     const unauthorizedBody = await unauthorized.json();
     assert.equal(unauthorizedBody.code, "missing_auth_context");
 
+    const otherToken = await issueToken(app.baseUrl, "other-user");
     const forbidden = await fetch(
       `${app.baseUrl}/v1/users/target-user/donor-presets`,
       {
-        headers: { authorization: "Bearer demo.other-user" }
+        headers: { authorization: `Bearer ${otherToken}` }
       }
     );
     assert.equal(forbidden.status, 403);

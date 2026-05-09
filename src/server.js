@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { extractUserIdFromHeaders, resolveAuthenticatedUserId } from "./authContext.js";
+import { mintAuthToken } from "./tokenService.js";
 import { UserStore } from "./userStore.js";
 
 const DEFAULT_PORT = Number(process.env.PORT || 8081);
@@ -59,10 +60,6 @@ function parseUserPath(urlPath) {
   return decodeURIComponent(match[1]);
 }
 
-function makeDemoToken(userId) {
-  return `demo.${userId}`;
-}
-
 export function createUserServiceServer({ store }) {
   if (!store) {
     throw new Error("createUserServiceServer requires store.");
@@ -73,7 +70,7 @@ export function createUserServiceServer({ store }) {
       return sendJson(res, 200, { ok: true, service: "user-service" });
     }
 
-    if (req.method === "POST" && req.url === "/v1/auth/demo-token") {
+    if (req.method === "POST" && req.url === "/v1/auth/token") {
       try {
         const payload = await parseJsonBody(req);
         const fromBody =
@@ -86,7 +83,11 @@ export function createUserServiceServer({ store }) {
           phone: payload.phone,
           email: payload.email
         });
-        return sendJson(res, 200, { token: makeDemoToken(userId), user });
+        return sendJson(res, 200, {
+          token: mintAuthToken(userId),
+          token_type: "Bearer",
+          user
+        });
       } catch (error) {
         const body = JSON.parse(error.message);
         return sendJson(res, 400, body);
