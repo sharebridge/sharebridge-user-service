@@ -1,0 +1,11 @@
+{
+  "name": "sharebridge-user-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP user service for auth token minting and donor presets.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  }
+}
