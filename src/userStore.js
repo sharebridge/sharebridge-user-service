@@ -41,12 +41,12 @@ export class UserStore {
     const existing = this.state.users[userId];
     if (existing) {
       let changed = false;
-      if (!existing.phone && phone) {
-        existing.phone = phone;
+      if (!existing.phone && isNonEmptyString(phone)) {
+        existing.phone = phone.trim();
         changed = true;
       }
-      if (!existing.email && email) {
-        existing.email = email;
+      if (!existing.email && isNonEmptyString(email)) {
+        existing.email = email.trim();
         changed = true;
       }
       if (changed) {

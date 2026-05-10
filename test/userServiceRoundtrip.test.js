@@ -140,3 +140,156 @@ test("returns 401 and 403 for auth failures", async () => {
     await app.close();
   }
 });
+
+test("GET /health returns service identity", async () => {
+  const app = await startServer();
+  try {
+    const res = await fetch(`${app.baseUrl}/health`);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.service, "user-service");
+  } finally {
+    await app.close();
+  }
+});
+
+test("unknown routes return 404 JSON", async () => {
+  const app = await startServer();
+  try {
+    const res = await fetch(`${app.baseUrl}/v1/not-a-route`);
+    assert.equal(res.status, 404);
+    const body = await res.json();
+    assert.equal(body.code, "not_found");
+  } finally {
+    await app.close();
+  }
+});
+
+test("POST /v1/auth/token rejects malformed JSON", async () => {
+  const app = await startServer();
+  try {
+    const res = await fetch(`${app.baseUrl}/v1/auth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{bad"
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.code, "invalid_json");
+  } finally {
+    await app.close();
+  }
+});
+
+test("PUT donor-presets rejects malformed JSON", async () => {
+  const app = await startServer();
+  try {
+    const token = await issueToken(app.baseUrl, "json-user");
+    const res = await fetch(`${app.baseUrl}/v1/users/json-user/donor-presets`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`
+      },
+      body: "not-json"
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.code, "invalid_json");
+  } finally {
+    await app.close();
+  }
+});
+
+test("PUT donor-presets requires presets array", async () => {
+  const app = await startServer();
+  try {
+    const token = await issueToken(app.baseUrl, "arr-user");
+    const res = await fetch(`${app.baseUrl}/v1/users/arr-user/donor-presets`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ presets: {} })
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.code, "invalid_request");
+    assert.ok(String(body.message).includes("presets must be an array"));
+  } finally {
+    await app.close();
+  }
+});
+
+test("PUT donor-presets validates preset fields", async () => {
+  const app = await startServer();
+  try {
+    const token = await issueToken(app.baseUrl, "val-user");
+    const res = await fetch(`${app.baseUrl}/v1/users/val-user/donor-presets`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        presets: [
+          {
+            restaurant_name: "",
+            order_url: "https://x",
+            menu_items: ["a"],
+            app_name: "A",
+            source: "s",
+            confidence: 0
+          }
+        ]
+      })
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.code, "invalid_request");
+    assert.ok(String(body.message).includes("restaurant_name"));
+  } finally {
+    await app.close();
+  }
+});
+
+test("donor-presets path accepts URL-encoded user id", async () => {
+  const app = await startServer();
+  try {
+    const userId = "donor/with-id";
+    const token = await issueToken(app.baseUrl, userId);
+    const encoded = encodeURIComponent(userId);
+    const put = await fetch(`${app.baseUrl}/v1/users/${encoded}/donor-presets`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        presets: [
+          {
+            restaurant_name: "Spot",
+            order_url: "https://spot.example",
+            menu_items: ["item"],
+            app_name: "App",
+            source: "test",
+            confidence: 1
+          }
+        ]
+      })
+    });
+    assert.equal(put.status, 200);
+
+    const get = await fetch(`${app.baseUrl}/v1/users/${encoded}/donor-presets`, {
+      headers: { authorization: `Bearer ${token}` }
+    });
+    assert.equal(get.status, 200);
+    const payload = await get.json();
+    assert.equal(payload.presets.length, 1);
+    assert.equal(payload.presets[0].restaurant_name, "Spot");
+  } finally {
+    await app.close();
+  }
+});
