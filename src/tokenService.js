@@ -1,10 +1,23 @@
 import crypto from "node:crypto";
 
-const DEFAULT_ISSUER = process.env.AUTH_TOKEN_ISSUER || "sharebridge-user-service";
-const DEFAULT_AUDIENCE = process.env.AUTH_TOKEN_AUDIENCE || "sharebridge-clients";
-const DEFAULT_TTL_SECONDS = Number(process.env.AUTH_TOKEN_TTL_SECONDS || 3600);
-const DEFAULT_SECRET =
-  process.env.AUTH_TOKEN_SECRET || "sharebridge-dev-secret-change-me";
+function envStr(name, fallback) {
+  const v = process.env[name];
+  if (typeof v !== "string" || v.trim() === "") return fallback;
+  return v.trim();
+}
+
+/** Read at mint/verify time so tests can set env without module-order issues */
+function defaults() {
+  return {
+    issuer: envStr("AUTH_TOKEN_ISSUER", "sharebridge-user-service"),
+    audience: envStr("AUTH_TOKEN_AUDIENCE", "sharebridge-clients"),
+    ttlSeconds: Number(process.env.AUTH_TOKEN_TTL_SECONDS || 3600),
+    secret: envStr(
+      "AUTH_TOKEN_SECRET",
+      "sharebridge-dev-secret-change-me"
+    )
+  };
+}
 
 function base64UrlEncodeJson(value) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -16,10 +29,12 @@ function sign(data, secret) {
 
 export function mintAuthToken(userId, options = {}) {
   const now = Math.floor(Date.now() / 1000);
-  const issuer = options.issuer || DEFAULT_ISSUER;
-  const audience = options.audience || DEFAULT_AUDIENCE;
-  const ttlSeconds = options.ttlSeconds || DEFAULT_TTL_SECONDS;
-  const secret = options.secret || DEFAULT_SECRET;
+  const d = defaults();
+  const issuer = options.issuer ?? d.issuer;
+  const audience = options.audience ?? d.audience;
+  const ttlSeconds =
+    typeof options.ttlSeconds === "number" ? options.ttlSeconds : d.ttlSeconds;
+  const secret = options.secret ?? d.secret;
   const payload = {
     sub: userId,
     iss: issuer,
@@ -38,9 +53,10 @@ export function verifyAuthToken(token, options = {}) {
   if (typeof token !== "string" || !token.trim()) {
     throw new Error("Token is required.");
   }
-  const secret = options.secret || DEFAULT_SECRET;
-  const issuer = options.issuer || DEFAULT_ISSUER;
-  const audience = options.audience || DEFAULT_AUDIENCE;
+  const d = defaults();
+  const secret = options.secret ?? d.secret;
+  const issuer = options.issuer ?? d.issuer;
+  const audience = options.audience ?? d.audience;
 
   const parts = token.split(".");
   if (parts.length !== 3) {
