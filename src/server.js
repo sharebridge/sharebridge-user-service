@@ -29,6 +29,10 @@ function parseJsonBody(req) {
   });
 }
 
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function validatePreset(preset, index) {
   if (!preset || typeof preset !== "object") {
     return `presets[${index}] must be an object.`;
@@ -56,6 +60,12 @@ function validatePreset(preset, index) {
 
 function parseUserPath(urlPath) {
   const match = /^\/v1\/users\/([^/]+)\/donor-presets$/.exec(urlPath);
+  if (!match) return null;
+  return decodeURIComponent(match[1]);
+}
+
+function parseDonorPresetsDeleteItemPath(urlPath) {
+  const match = /^\/v1\/users\/([^/]+)\/donor-presets\/delete-item$/.exec(urlPath);
   if (!match) return null;
   return decodeURIComponent(match[1]);
 }
@@ -94,7 +104,49 @@ export function createUserServiceServer({ store }) {
       }
     }
 
-    const userIdFromPath = parseUserPath(req.url || "");
+    const pathOnly = (req.url || "").split("?")[0];
+    const deleteItemUserId = parseDonorPresetsDeleteItemPath(pathOnly);
+    if (req.method === "POST" && deleteItemUserId) {
+      const headerUserId = extractUserIdFromHeaders(req.headers);
+      const { userId, error: authError } = resolveAuthenticatedUserId({
+        headerUserId
+      });
+      if (authError) {
+        return sendJson(res, authError.status, authError.body);
+      }
+      if (userId !== deleteItemUserId) {
+        return sendJson(res, 403, {
+          code: "user_id_mismatch",
+          message: "user_id in URL does not match the authenticated user_id."
+        });
+      }
+      try {
+        const payload = await parseJsonBody(req);
+        if (!isNonEmptyString(payload.restaurant_name)) {
+          return sendJson(res, 400, {
+            code: "invalid_request",
+            message: "restaurant_name is required."
+          });
+        }
+        if (!isNonEmptyString(payload.order_url)) {
+          return sendJson(res, 400, {
+            code: "invalid_request",
+            message: "order_url is required."
+          });
+        }
+        await store.getOrCreateUser({ userId });
+        const presets = await store.deleteDonorPreset(userId, {
+          restaurant_name: payload.restaurant_name.trim(),
+          order_url: payload.order_url.trim()
+        });
+        return sendJson(res, 200, { presets });
+      } catch (error) {
+        const body = JSON.parse(error.message);
+        return sendJson(res, 400, body);
+      }
+    }
+
+    const userIdFromPath = parseUserPath(pathOnly);
     if (userIdFromPath && (req.method === "GET" || req.method === "PUT")) {
       const headerUserId = extractUserIdFromHeaders(req.headers);
       const { userId, error: authError } = resolveAuthenticatedUserId({ headerUserId });

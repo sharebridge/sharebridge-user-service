@@ -5,8 +5,14 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function keyFromPair(restaurantName, orderUrl) {
+  const r = String(restaurantName ?? "").trim();
+  const u = String(orderUrl ?? "").trim();
+  return `${r}::${u}`;
+}
+
 function keyForPreset(preset) {
-  return `${preset.restaurant_name}::${preset.order_url}`;
+  return keyFromPair(preset.restaurant_name, preset.order_url);
 }
 
 export class UserStore {
@@ -106,6 +112,21 @@ export class UserStore {
     this.state.donorPresets[userId] = updated;
     await this.#flush();
     return updated;
+  }
+
+  /**
+   * Removes one preset matching trimmed (restaurant_name, order_url), same key as dedupe.
+   */
+  async deleteDonorPreset(userId, { restaurant_name, order_url }) {
+    if (!isNonEmptyString(userId)) {
+      throw new Error("userId is required.");
+    }
+    const target = keyFromPair(restaurant_name, order_url);
+    const list = this.state.donorPresets[userId] || [];
+    const next = list.filter((p) => keyForPreset(p) !== target);
+    this.state.donorPresets[userId] = next;
+    await this.#flush();
+    return next;
   }
 
   async #flush() {

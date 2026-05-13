@@ -164,6 +164,35 @@ test("replaceDonorPresets dedupes by restaurant_name and order_url (latest wins)
   assert.equal(out[0].source, "second");
 });
 
+test("deleteDonorPreset removes matching row by trimmed key", async () => {
+  const store = new UserStore({ storagePath: await tempStorePath("del") });
+  await store.init();
+  await store.replaceDonorPresets("u", [
+    {
+      restaurant_name: "A",
+      order_url: "https://a",
+      menu_items: ["m"],
+      app_name: "App",
+      source: "s",
+      confidence: 0.5
+    },
+    {
+      restaurant_name: "B",
+      order_url: "https://b",
+      menu_items: ["n"],
+      app_name: "App",
+      source: "s",
+      confidence: 0.5
+    }
+  ]);
+  const next = await store.deleteDonorPreset("u", {
+    restaurant_name: "  A  ",
+    order_url: "https://a"
+  });
+  assert.equal(next.length, 1);
+  assert.equal(next[0].restaurant_name, "B");
+});
+
 test("replaceDonorPresets fills id and saved_at when omitted", async () => {
   const store = new UserStore({ storagePath: await tempStorePath("defaults") });
   await store.init();

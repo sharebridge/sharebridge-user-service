@@ -37,3 +37,6 @@ yarn-error.log*
 # Misc
 .cache/
 .temp/
+
+# Local file-backed store (dev / accidental runs)
+data/

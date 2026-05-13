@@ -116,6 +116,67 @@ test("upserts donor presets and returns deduped set", async () => {
   }
 });
 
+test("POST donor-presets/delete-item removes one preset", async () => {
+  const app = await startServer();
+  try {
+    const token = await issueToken(app.baseUrl, "donor-del");
+    const put = await fetch(`${app.baseUrl}/v1/users/donor-del/donor-presets`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        presets: [
+          {
+            restaurant_name: "One",
+            order_url: "https://one.example",
+            menu_items: ["a"],
+            app_name: "Z",
+            source: "s",
+            confidence: 0.8
+          },
+          {
+            restaurant_name: "Two",
+            order_url: "https://two.example",
+            menu_items: ["b"],
+            app_name: "Z",
+            source: "s",
+            confidence: 0.8
+          }
+        ]
+      })
+    });
+    assert.equal(put.status, 200);
+
+    const del = await fetch(
+      `${app.baseUrl}/v1/users/donor-del/donor-presets/delete-item`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          restaurant_name: "One",
+          order_url: "https://one.example"
+        })
+      }
+    );
+    assert.equal(del.status, 200);
+    const delBody = await del.json();
+    assert.equal(delBody.presets.length, 1);
+    assert.equal(delBody.presets[0].restaurant_name, "Two");
+
+    const get = await fetch(`${app.baseUrl}/v1/users/donor-del/donor-presets`, {
+      headers: { authorization: `Bearer ${token}` }
+    });
+    assert.equal((await get.json()).presets.length, 1);
+  } finally {
+    await app.close();
+  }
+});
+
 test("returns 401 and 403 for auth failures", async () => {
   const app = await startServer();
   try {
