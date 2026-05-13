@@ -35,8 +35,8 @@ test("mint and verify round-trip with explicit secret", () => {
     secret: "explicit-test-secret"
   });
   assert.equal(payload.sub, "donor-xyz");
-  assert.equal(payload.iss, "sharebridge-user-service");
-  assert.equal(payload.aud, "sharebridge-clients");
+  assert.equal(payload.iss, "sharingbridge-user-service");
+  assert.equal(payload.aud, "sharingbridge-clients");
   assert.ok(payload.exp > payload.iat);
 });
 
@@ -80,7 +80,7 @@ test("verify rejects issuer mismatch", () => {
       verifyAuthToken(token, {
         secret: "k",
         issuer: "issuer-b",
-        audience: "sharebridge-clients"
+        audience: "sharingbridge-clients"
       }),
     /issuer/
   );
@@ -96,7 +96,7 @@ test("verify rejects audience mismatch", () => {
     () =>
       verifyAuthToken(token, {
         secret: "k",
-        issuer: "sharebridge-user-service",
+        issuer: "sharingbridge-user-service",
         audience: "aud-b"
       }),
     /audience/

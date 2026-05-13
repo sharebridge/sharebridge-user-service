@@ -9,12 +9,12 @@ function envStr(name, fallback) {
 /** Read at mint/verify time so tests can set env without module-order issues */
 function defaults() {
   return {
-    issuer: envStr("AUTH_TOKEN_ISSUER", "sharebridge-user-service"),
-    audience: envStr("AUTH_TOKEN_AUDIENCE", "sharebridge-clients"),
+    issuer: envStr("AUTH_TOKEN_ISSUER", "sharingbridge-user-service"),
+    audience: envStr("AUTH_TOKEN_AUDIENCE", "sharingbridge-clients"),
     ttlSeconds: Number(process.env.AUTH_TOKEN_TTL_SECONDS || 3600),
     secret: envStr(
       "AUTH_TOKEN_SECRET",
-      "sharebridge-dev-secret-change-me"
+      "sharingbridge-dev-secret-change-me"
     )
   };
 }

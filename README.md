@@ -1,10 +1,10 @@
-# sharebridge-user-service
+# sharingbridge-user-service
 
 > User authentication and profiles
 
 ## Overview
 
-This repository contains the **User Service** - manages user authentication, profiles, and preferences for all ShareBridge users.
+This repository contains the **User Service** - manages user authentication, profiles, and preferences for all SharingBridge users.
 
 **Key Responsibilities:**
 - 🔐 User registration and authentication (phone/email)
@@ -19,7 +19,7 @@ This repository contains the **User Service** - manages user authentication, pro
 
 **Technology Stack:** Node.js with NestJS or Python with FastAPI + PostgreSQL
 
-For overall project context, see the [main ShareBridge repository](https://github.com/sharebridge/sharebridge).
+For overall project context, see the [main SharingBridge repository](https://github.com/sharingbridge/sharingbridge).
 
 ## Repository Status
 
@@ -32,7 +32,7 @@ For overall project context, see the [main ShareBridge repository](https://githu
 
 ## Contributing
 
-See the [main repository's CALL_FOR_CONTRIBUTORS.md](https://github.com/sharebridge/sharebridge/blob/main/development/CALL_FOR_CONTRIBUTORS.md) for:
+See the [main repository's CALL_FOR_CONTRIBUTORS.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/CALL_FOR_CONTRIBUTORS.md) for:
 - How to contribute (technical and non-technical)
 - Joining GitHub Discussions
 - Submitting prompts and feature ideas
@@ -43,4 +43,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Part of the [ShareBridge](https://github.com/sharebridge/sharebridge) ecosystem
+Part of the [SharingBridge](https://github.com/sharingbridge/sharingbridge) ecosystem
