@@ -1,0 +1,21 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Dashboard: New → Blueprint → connect this repo
+services:
+  - type: web
+    name: sharingbridge-user-service
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: AUTH_TOKEN_SECRET
+        generateValue: true
+      - key: AUTH_TOKEN_ISSUER
+        value: sharingbridge-user-service
+      - key: AUTH_TOKEN_AUDIENCE
+        value: sharingbridge-clients
+      - key: AUTH_TOKEN_TTL_SECONDS
+        value: "3600"

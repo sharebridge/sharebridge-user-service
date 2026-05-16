@@ -28,7 +28,20 @@ For overall project context, see the [main SharingBridge repository](https://git
 
 ## Getting Started
 
-> Coming soon - Development setup instructions
+```bash
+npm install
+npm test
+npm start
+```
+
+- Health: `GET http://localhost:8081/health`
+- Mint token: `POST http://localhost:8081/v1/auth/token` body `{"user_id":"demo-user"}`
+
+See `.env.example` for auth env vars.
+
+## Deploy (Render)
+
+Blueprint: `render.yaml`. Full walkthrough: [DEPLOY_RENDER.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/DEPLOY_RENDER.md) (deploy **first**; copy URL + `AUTH_TOKEN_SECRET` to integration-service).
 
 ## Contributing
 
