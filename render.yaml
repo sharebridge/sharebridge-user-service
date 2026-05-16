@@ -1,5 +1,5 @@
-# Render Blueprint — https://render.com/docs/blueprint-spec
-# Dashboard: New → Blueprint → connect this repo
+# Render Blueprint — one Web Service. Full guide:
+# https://github.com/sharingbridge/sharingbridge/blob/main/configuration/backend-render.md
 services:
   - type: web
     name: sharingbridge-user-service

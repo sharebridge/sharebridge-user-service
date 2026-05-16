@@ -41,7 +41,7 @@ See `.env.example` for auth env vars.
 
 ## Deploy (Render)
 
-Blueprint: `render.yaml`. Full walkthrough: [DEPLOY_RENDER.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/DEPLOY_RENDER.md) (deploy **first**; copy URL + `AUTH_TOKEN_SECRET` to integration-service).
+Deploy **first**. See [configuration/backend-render.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/backend-render.md). Blueprint: `render.yaml`.
 
 ## Contributing
 
