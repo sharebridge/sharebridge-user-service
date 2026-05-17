@@ -1,6 +1,11 @@
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { extractUserIdFromHeaders, resolveAuthenticatedUserId } from "./authContext.js";
+import {
+  applyCorsHeaders,
+  handleCorsPreflight,
+  parseCorsOrigins
+} from "./cors.js";
 import { mintAuthToken } from "./tokenService.js";
 import { UserStore } from "./userStore.js";
 
@@ -70,12 +75,20 @@ function parseDonorPresetsDeleteItemPath(urlPath) {
   return decodeURIComponent(match[1]);
 }
 
-export function createUserServiceServer({ store }) {
+export function createUserServiceServer({
+  store,
+  corsConfig = parseCorsOrigins()
+}) {
   if (!store) {
     throw new Error("createUserServiceServer requires store.");
   }
 
   return createServer(async (req, res) => {
+    applyCorsHeaders(req, res, corsConfig);
+    if (handleCorsPreflight(req, res, corsConfig)) {
+      return;
+    }
+
     if (req.method === "GET" && req.url === "/health") {
       return sendJson(res, 200, { ok: true, service: "user-service" });
     }
