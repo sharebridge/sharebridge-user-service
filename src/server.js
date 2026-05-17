@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { extractUserIdFromHeaders, resolveAuthenticatedUserId } from "./authContext.js";

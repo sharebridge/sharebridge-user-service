@@ -37,7 +37,7 @@ npm start
 - Health: `GET http://localhost:8081/health`
 - Mint token: `POST http://localhost:8081/v1/auth/token` body `{"user_id":"demo-user"}`
 
-See `.env.example` for auth env vars.
+Copy `.env.example` to `.env` (loaded on `npm start` via dotenv). Set `WEB_CORS_ORIGINS` when using `sharingbridge-web-app` locally.
 
 ## Deploy (Render)
 
