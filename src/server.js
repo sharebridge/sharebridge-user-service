@@ -7,6 +7,9 @@ import {
   handleCorsPreflight,
   parseCorsOrigins
 } from "./cors.js";
+import { CoordinatorRegistry } from "./coordinatorRegistry.js";
+import { createGoogleAuthVerifier } from "./googleAuth.js";
+import { ROLE_COORDINATOR, ROLE_DONOR, isValidRole } from "./roles.js";
 import { mintAuthToken } from "./tokenService.js";
 import { UserStore } from "./userStore.js";
 
@@ -76,13 +79,21 @@ function parseDonorPresetsDeleteItemPath(urlPath) {
   return decodeURIComponent(match[1]);
 }
 
+function devTokenMintEnabled() {
+  const flag = process.env.ALLOW_DEV_TOKEN_MINT;
+  return flag === "1" || flag === "true";
+}
+
 export function createUserServiceServer({
   store,
+  coordinatorRegistry,
+  googleAuthVerifier,
   corsConfig = parseCorsOrigins()
 }) {
   if (!store) {
     throw new Error("createUserServiceServer requires store.");
   }
+  const googleAuth = googleAuthVerifier ?? createGoogleAuthVerifier();
 
   return createServer(async (req, res) => {
     applyCorsHeaders(req, res, corsConfig);
@@ -94,7 +105,86 @@ export function createUserServiceServer({
       return sendJson(res, 200, { ok: true, service: "user-service" });
     }
 
+    if (req.method === "POST" && req.url === "/v1/auth/google") {
+      try {
+        const payload = await parseJsonBody(req);
+        const idToken =
+          typeof payload.id_token === "string" ? payload.id_token.trim() : "";
+        if (!idToken) {
+          return sendJson(res, 400, {
+            code: "invalid_request",
+            message: "id_token is required."
+          });
+        }
+        const clientType =
+          typeof payload.client_type === "string"
+            ? payload.client_type.trim().toLowerCase()
+            : "web";
+        const googleProfile = await googleAuth.verifyIdToken(idToken);
+        if (!googleProfile.email) {
+          return sendJson(res, 400, {
+            code: "invalid_request",
+            message: "Google account must expose an email address."
+          });
+        }
+        const isCoordinator = coordinatorRegistry?.isCoordinator(
+          googleProfile.email
+        );
+        const role = isCoordinator ? ROLE_COORDINATOR : ROLE_DONOR;
+        if (clientType === "web" && role !== ROLE_COORDINATOR) {
+          return sendJson(res, 403, {
+            code: "wrong_client_role",
+            message:
+              "This Google account is not a coordinator. Use the mobile app as a donor."
+          });
+        }
+        if (
+          (clientType === "android" ||
+            clientType === "ios" ||
+            clientType === "mobile") &&
+          role === ROLE_COORDINATOR
+        ) {
+          return sendJson(res, 403, {
+            code: "wrong_client_role",
+            message:
+              "Coordinator accounts must use the web dashboard, not the mobile donor app."
+          });
+        }
+        const user = await store.findOrCreateGoogleUser({
+          googleSub: googleProfile.googleSub,
+          email: googleProfile.email,
+          name: googleProfile.name,
+          picture: googleProfile.picture,
+          role
+        });
+        const token = mintAuthToken(user.id, { role: user.role });
+        return sendJson(res, 200, {
+          token,
+          token_type: "Bearer",
+          user
+        });
+      } catch (error) {
+        if (error?.message?.includes("invalid_request")) {
+          return sendJson(res, 400, {
+            code: "invalid_request",
+            message: error.message
+          });
+        }
+        return sendJson(res, 401, {
+          code: "invalid_google_token",
+          message: error?.message || "Google sign-in failed."
+        });
+      }
+    }
+
     if (req.method === "POST" && req.url === "/v1/auth/token") {
+      if (!devTokenMintEnabled()) {
+        return sendJson(res, 403, {
+          code: "dev_auth_disabled",
+          message:
+            "Dev token mint is disabled. Use POST /v1/auth/google or set ALLOW_DEV_TOKEN_MINT=true."
+        });
+      }
       try {
         const payload = await parseJsonBody(req);
         const fromBody =
@@ -102,15 +192,19 @@ export function createUserServiceServer({
             ? payload.user_id.trim()
             : null;
         const userId = fromBody || `demo-user-${Date.now()}`;
+        const roleRaw =
+          typeof payload.role === "string" ? payload.role.trim() : ROLE_DONOR;
+        const role = isValidRole(roleRaw) ? roleRaw : ROLE_DONOR;
         const user = await store.getOrCreateUser({
           userId,
           phone: payload.phone,
           email: payload.email
         });
+        user.role = role;
         return sendJson(res, 200, {
-          token: mintAuthToken(userId),
+          token: mintAuthToken(userId, { role }),
           token_type: "Bearer",
-          user
+          user: { ...user, role }
         });
       } catch (error) {
         const body = JSON.parse(error.message);
@@ -211,7 +305,9 @@ const isMainModule =
 if (isMainModule) {
   const store = new UserStore();
   await store.init();
-  const server = createUserServiceServer({ store });
+  const coordinatorRegistry = new CoordinatorRegistry();
+  await coordinatorRegistry.init();
+  const server = createUserServiceServer({ store, coordinatorRegistry });
   server.listen(DEFAULT_PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`User service listening on ${DEFAULT_PORT}`);

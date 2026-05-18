@@ -17,7 +17,7 @@ test("init creates empty store file when missing", async () => {
   await store.init();
   const raw = await readFile(storagePath, "utf-8");
   const parsed = JSON.parse(raw);
-  assert.deepEqual(parsed, { users: {}, donorPresets: {} });
+  assert.deepEqual(parsed, { users: {}, usersByGoogleSub: {}, donorPresets: {} });
 });
 
 test("init loads persisted users and presets", async () => {

@@ -35,8 +35,13 @@ export function mintAuthToken(userId, options = {}) {
   const ttlSeconds =
     typeof options.ttlSeconds === "number" ? options.ttlSeconds : d.ttlSeconds;
   const secret = options.secret ?? d.secret;
+  const role =
+    typeof options.role === "string" && options.role.trim()
+      ? options.role.trim()
+      : "donor";
   const payload = {
     sub: userId,
+    role,
     iss: issuer,
     aud: audience,
     iat: now,

@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { ROLE_DONOR } from "./roles.js";
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -20,7 +22,7 @@ export class UserStore {
     storagePath = path.join(process.cwd(), "data", "user-service-store.json")
   } = {}) {
     this.storagePath = storagePath;
-    this.state = { users: {}, donorPresets: {} };
+    this.state = { users: {}, usersByGoogleSub: {}, donorPresets: {} };
   }
 
   async init() {
@@ -30,6 +32,7 @@ export class UserStore {
       const parsed = JSON.parse(content);
       this.state = {
         users: parsed.users || {},
+        usersByGoogleSub: parsed.usersByGoogleSub || {},
         donorPresets: parsed.donorPresets || {}
       };
     } catch (error) {
@@ -47,6 +50,14 @@ export class UserStore {
     const existing = this.state.users[userId];
     if (existing) {
       let changed = false;
+      if (!existing.user_id) {
+        existing.user_id = userId;
+        changed = true;
+      }
+      if (!existing.role) {
+        existing.role = ROLE_DONOR;
+        changed = true;
+      }
       if (!existing.phone && isNonEmptyString(phone)) {
         existing.phone = phone.trim();
         changed = true;
@@ -63,11 +74,69 @@ export class UserStore {
 
     const created = {
       id: userId,
+      user_id: userId,
       phone: isNonEmptyString(phone) ? phone.trim() : null,
       email: isNonEmptyString(email) ? email.trim() : null,
+      role: ROLE_DONOR,
+      google_sub: null,
+      name: null,
+      picture: null,
       created_at: new Date().toISOString()
     };
     this.state.users[userId] = created;
+    await this.#flush();
+    return created;
+  }
+
+  #userIdFromGoogleSub(googleSub) {
+    const digest = createHash("sha256").update(googleSub).digest("hex").slice(0, 16);
+    return `u_${digest}`;
+  }
+
+  async findOrCreateGoogleUser({ googleSub, email, name, picture, role }) {
+    if (!isNonEmptyString(googleSub)) {
+      throw new Error("googleSub is required.");
+    }
+    const existingId = this.state.usersByGoogleSub[googleSub.trim()];
+    if (existingId && this.state.users[existingId]) {
+      const user = this.state.users[existingId];
+      let changed = false;
+      if (isNonEmptyString(email) && user.email !== email.trim()) {
+        user.email = email.trim();
+        changed = true;
+      }
+      if (isNonEmptyString(name) && user.name !== name.trim()) {
+        user.name = name.trim();
+        changed = true;
+      }
+      if (isNonEmptyString(picture) && user.picture !== picture.trim()) {
+        user.picture = picture.trim();
+        changed = true;
+      }
+      if (typeof role === "string" && role && user.role !== role) {
+        user.role = role;
+        changed = true;
+      }
+      if (changed) {
+        await this.#flush();
+      }
+      return user;
+    }
+
+    const userId = this.#userIdFromGoogleSub(googleSub);
+    const created = {
+      id: userId,
+      user_id: userId,
+      phone: null,
+      email: isNonEmptyString(email) ? email.trim() : null,
+      role: typeof role === "string" && role ? role : ROLE_DONOR,
+      google_sub: googleSub.trim(),
+      name: isNonEmptyString(name) ? name.trim() : null,
+      picture: isNonEmptyString(picture) ? picture.trim() : null,
+      created_at: new Date().toISOString()
+    };
+    this.state.users[userId] = created;
+    this.state.usersByGoogleSub[googleSub.trim()] = userId;
     await this.#flush();
     return created;
   }
