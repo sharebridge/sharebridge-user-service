@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { ROLE_DONOR } from "./roles.js";
+import { ROLE_COORDINATOR, ROLE_DONOR } from "./roles.js";
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -23,6 +23,26 @@ export class UserStore {
   } = {}) {
     this.storagePath = storagePath;
     this.state = { users: {}, usersByGoogleSub: {}, donorPresets: {} };
+  }
+
+  async getRolesForUser(userId) {
+    const user = this.state.users[userId];
+    if (!user) {
+      return [ROLE_DONOR];
+    }
+    const roles = new Set([ROLE_DONOR]);
+    if (user.role === ROLE_COORDINATOR) {
+      roles.add(ROLE_COORDINATOR);
+    }
+    return [...roles];
+  }
+
+  async ensureRole(userId, role) {
+    const user = await this.getOrCreateUser({ userId });
+    if (role === ROLE_COORDINATOR && user.role !== ROLE_COORDINATOR) {
+      user.role = ROLE_COORDINATOR;
+      await this.#flush();
+    }
   }
 
   async init() {

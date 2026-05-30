@@ -9,10 +9,12 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "import:json": "node scripts/import-json-to-postgres.mjs"
   },
   "dependencies": {
     "dotenv": "^16.6.1",
-    "google-auth-library": "^9.0.0"
+    "google-auth-library": "^9.0.0",
+    "pg": "^8.16.0"
   }
 }

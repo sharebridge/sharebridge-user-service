@@ -9,9 +9,9 @@ import {
 } from "./cors.js";
 import { CoordinatorRegistry } from "./coordinatorRegistry.js";
 import { createGoogleAuthVerifier } from "./googleAuth.js";
+import { PostgresUserStore } from "./postgresUserStore.js";
 import { ROLE_COORDINATOR, ROLE_DONOR, isValidRole } from "./roles.js";
 import { mintAuthToken } from "./tokenService.js";
-import { UserStore } from "./userStore.js";
 
 const DEFAULT_PORT = Number(process.env.PORT || 8081);
 
@@ -84,6 +84,17 @@ function devTokenMintEnabled() {
   return flag === "1" || flag === "true";
 }
 
+async function resolveCoordinatorAccess(store, coordinatorRegistry, email, userId) {
+  await store.ensureRole(userId, ROLE_DONOR);
+  if (coordinatorRegistry?.isCoordinator(email)) {
+    await store.ensureRole(userId, ROLE_COORDINATOR);
+  }
+  const roles = await store.getRolesForUser(userId);
+  const isCoordinator = roles.includes(ROLE_COORDINATOR);
+  const activeRole = isCoordinator ? ROLE_COORDINATOR : ROLE_DONOR;
+  return { roles, activeRole, isCoordinator };
+}
+
 export function createUserServiceServer({
   store,
   coordinatorRegistry,
@@ -127,10 +138,18 @@ export function createUserServiceServer({
             message: "Google account must expose an email address."
           });
         }
-        const isCoordinator = coordinatorRegistry?.isCoordinator(
-          googleProfile.email
+        const user = await store.findOrCreateGoogleUser({
+          googleSub: googleProfile.googleSub,
+          email: googleProfile.email,
+          name: googleProfile.name,
+          picture: googleProfile.picture
+        });
+        const { roles, activeRole: role } = await resolveCoordinatorAccess(
+          store,
+          coordinatorRegistry,
+          googleProfile.email,
+          user.id
         );
-        const role = isCoordinator ? ROLE_COORDINATOR : ROLE_DONOR;
         if (clientType === "web" && role !== ROLE_COORDINATOR) {
           return sendJson(res, 403, {
             code: "wrong_client_role",
@@ -150,18 +169,11 @@ export function createUserServiceServer({
               "Coordinator accounts must use the web dashboard, not the mobile donor app."
           });
         }
-        const user = await store.findOrCreateGoogleUser({
-          googleSub: googleProfile.googleSub,
-          email: googleProfile.email,
-          name: googleProfile.name,
-          picture: googleProfile.picture,
-          role
-        });
-        const token = mintAuthToken(user.id, { role: user.role });
+        const token = mintAuthToken(user.id, { role, roles });
         return sendJson(res, 200, {
           token,
           token_type: "Bearer",
-          user
+          user: { ...user, role }
         });
       } catch (error) {
         if (error?.message?.includes("invalid_request")) {
@@ -200,9 +212,13 @@ export function createUserServiceServer({
           phone: payload.phone,
           email: payload.email
         });
-        user.role = role;
+        await store.ensureRole(userId, ROLE_DONOR);
+        if (role === ROLE_COORDINATOR) {
+          await store.ensureRole(userId, ROLE_COORDINATOR);
+        }
+        const roles = await store.getRolesForUser(userId);
         return sendJson(res, 200, {
-          token: mintAuthToken(userId, { role }),
+          token: mintAuthToken(userId, { role, roles }),
           token_type: "Bearer",
           user: { ...user, role }
         });
@@ -303,13 +319,19 @@ export function createUserServiceServer({
 const isMainModule =
   process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMainModule) {
-  const store = new UserStore();
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl?.trim()) {
+    // eslint-disable-next-line no-console
+    console.error("DATABASE_URL is required. See configuration/database.md.");
+    process.exit(1);
+  }
+  const store = await PostgresUserStore.create(databaseUrl);
   await store.init();
   const coordinatorRegistry = new CoordinatorRegistry();
   await coordinatorRegistry.init();
   const server = createUserServiceServer({ store, coordinatorRegistry });
   server.listen(DEFAULT_PORT, () => {
     // eslint-disable-next-line no-console
-    console.log(`User service listening on ${DEFAULT_PORT}`);
+    console.log(`User service listening on ${DEFAULT_PORT} (PostgreSQL)`);
   });
 }
