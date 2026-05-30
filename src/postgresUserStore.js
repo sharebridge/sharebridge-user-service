@@ -68,22 +68,6 @@ export class PostgresUserStore {
     );
   }
 
-  async isCoordinatorByEmail(email) {
-    const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
-    if (!normalized) {
-      return false;
-    }
-    const result = await this.pool.query(
-      `SELECT 1
-       FROM users u
-       INNER JOIN user_roles ur ON ur.user_id = u.id AND ur.role = 'coordinator'
-       WHERE lower(u.email) = $1
-       LIMIT 1`,
-      [normalized]
-    );
-    return result.rowCount > 0;
-  }
-
   async getOrCreateUser({ userId, phone = null, email = null }) {
     if (!isNonEmptyString(userId)) {
       throw new Error("userId is required.");

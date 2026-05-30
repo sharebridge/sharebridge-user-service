@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * One-time import: data/user-service-store.json + coordinators → PostgreSQL.
+ * One-time import: data/user-service-store.json → PostgreSQL.
  * Usage: DATABASE_URL=... node scripts/import-json-to-postgres.mjs
  */
 import "dotenv/config";
@@ -11,10 +11,6 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
-
-function normalizeEmail(email) {
-  return typeof email === "string" ? email.trim().toLowerCase() : "";
-}
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL?.trim();
@@ -75,43 +71,6 @@ async function main() {
          VALUES ($1, $2::jsonb, now())
          ON CONFLICT (user_id) DO UPDATE SET presets_json = EXCLUDED.presets_json, updated_at = now()`,
         [user.id, JSON.stringify(presets)]
-      );
-    }
-  }
-
-  const coordinatorEmails = new Set();
-  try {
-    const coordRaw = JSON.parse(
-      await readFile(path.join(root, "data", "coordinators.json"), "utf-8")
-    );
-    for (const email of coordRaw.emails || []) {
-      const n = normalizeEmail(email);
-      if (n) {
-        coordinatorEmails.add(n);
-      }
-    }
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
-  }
-  if (process.env.COORDINATOR_EMAILS) {
-    for (const email of process.env.COORDINATOR_EMAILS.split(",")) {
-      const n = normalizeEmail(email);
-      if (n) {
-        coordinatorEmails.add(n);
-      }
-    }
-  }
-  for (const email of coordinatorEmails) {
-    const result = await pool.query(
-      "SELECT id FROM users WHERE lower(email) = $1",
-      [email]
-    );
-    for (const row of result.rows) {
-      await pool.query(
-        "INSERT INTO user_roles (user_id, role) VALUES ($1, 'coordinator') ON CONFLICT DO NOTHING",
-        [row.id]
       );
     }
   }

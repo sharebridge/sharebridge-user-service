@@ -7,7 +7,6 @@ import {
   handleCorsPreflight,
   parseCorsOrigins
 } from "./cors.js";
-import { CoordinatorRegistry } from "./coordinatorRegistry.js";
 import { createGoogleAuthVerifier } from "./googleAuth.js";
 import { PostgresUserStore } from "./postgresUserStore.js";
 import { ROLE_COORDINATOR, ROLE_DONOR, isValidRole } from "./roles.js";
@@ -84,11 +83,8 @@ function devTokenMintEnabled() {
   return flag === "1" || flag === "true";
 }
 
-async function resolveCoordinatorAccess(store, coordinatorRegistry, email, userId) {
+async function resolveUserRoles(store, userId) {
   await store.ensureRole(userId, ROLE_DONOR);
-  if (coordinatorRegistry?.isCoordinator(email)) {
-    await store.ensureRole(userId, ROLE_COORDINATOR);
-  }
   const roles = await store.getRolesForUser(userId);
   const isCoordinator = roles.includes(ROLE_COORDINATOR);
   const activeRole = isCoordinator ? ROLE_COORDINATOR : ROLE_DONOR;
@@ -97,7 +93,6 @@ async function resolveCoordinatorAccess(store, coordinatorRegistry, email, userI
 
 export function createUserServiceServer({
   store,
-  coordinatorRegistry,
   googleAuthVerifier,
   corsConfig = parseCorsOrigins()
 }) {
@@ -144,12 +139,7 @@ export function createUserServiceServer({
           name: googleProfile.name,
           picture: googleProfile.picture
         });
-        const { roles, activeRole: role } = await resolveCoordinatorAccess(
-          store,
-          coordinatorRegistry,
-          googleProfile.email,
-          user.id
-        );
+        const { roles, activeRole: role } = await resolveUserRoles(store, user.id);
         if (clientType === "web" && role !== ROLE_COORDINATOR) {
           return sendJson(res, 403, {
             code: "wrong_client_role",
@@ -327,9 +317,7 @@ if (isMainModule) {
   }
   const store = await PostgresUserStore.create(databaseUrl);
   await store.init();
-  const coordinatorRegistry = new CoordinatorRegistry();
-  await coordinatorRegistry.init();
-  const server = createUserServiceServer({ store, coordinatorRegistry });
+  const server = createUserServiceServer({ store });
   server.listen(DEFAULT_PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`User service listening on ${DEFAULT_PORT} (PostgreSQL)`);

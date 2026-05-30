@@ -3,11 +3,10 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { CoordinatorRegistry } from "../src/coordinatorRegistry.js";
 import { ROLE_COORDINATOR, ROLE_DONOR } from "../src/roles.js";
 import { createUserServiceServer } from "../src/server.js";
 import { UserStore } from "../src/userStore.js";
-import { mintAuthToken, verifyAuthToken } from "../src/tokenService.js";
+import { verifyAuthToken } from "../src/tokenService.js";
 
 async function tempStore() {
   const dir = await mkdtemp(path.join(tmpdir(), "sb-user-google-"));
@@ -18,9 +17,6 @@ async function tempStore() {
 
 test("POST /v1/auth/google mints donor token for mobile client", async () => {
   const { store, dir } = await tempStore();
-  const coordinatorRegistry = {
-    isCoordinator: (email) => email === "coord@example.com"
-  };
   const googleAuthVerifier = {
     audiences: ["test-client"],
     async verifyIdToken() {
@@ -35,7 +31,6 @@ test("POST /v1/auth/google mints donor token for mobile client", async () => {
   };
   const server = createUserServiceServer({
     store,
-    coordinatorRegistry,
     googleAuthVerifier
   });
   await new Promise((resolve) => server.listen(0, resolve));
@@ -63,7 +58,6 @@ test("POST /v1/auth/google mints donor token for mobile client", async () => {
 
 test("POST /v1/auth/google rejects donor on web client", async () => {
   const { store, dir } = await tempStore();
-  const coordinatorRegistry = { isCoordinator: () => false };
   const googleAuthVerifier = {
     audiences: ["test-client"],
     async verifyIdToken() {
@@ -78,7 +72,6 @@ test("POST /v1/auth/google rejects donor on web client", async () => {
   };
   const server = createUserServiceServer({
     store,
-    coordinatorRegistry,
     googleAuthVerifier
   });
   await new Promise((resolve) => server.listen(0, resolve));
@@ -102,11 +95,8 @@ test("POST /v1/auth/google rejects donor on web client", async () => {
   }
 });
 
-test("POST /v1/auth/google mints coordinator for allowlisted email on web", async () => {
+test("POST /v1/auth/google mints coordinator when user_roles has coordinator", async () => {
   const { store, dir } = await tempStore();
-  const coordinatorRegistry = {
-    isCoordinator: (email) => email === "coord@example.com"
-  };
   const googleAuthVerifier = {
     audiences: ["test-client"],
     async verifyIdToken() {
@@ -121,13 +111,20 @@ test("POST /v1/auth/google mints coordinator for allowlisted email on web", asyn
   };
   const server = createUserServiceServer({
     store,
-    coordinatorRegistry,
     googleAuthVerifier
   });
   await new Promise((resolve) => server.listen(0, resolve));
   const { port } = server.address();
 
   try {
+    const user = await store.findOrCreateGoogleUser({
+      googleSub: "google-sub-coord",
+      email: "coord@example.com",
+      name: "Coordinator",
+      picture: null
+    });
+    await store.ensureRole(user.id, ROLE_COORDINATOR);
+
     const response = await fetch(`http://127.0.0.1:${port}/v1/auth/google`, {
       method: "POST",
       headers: { "content-type": "application/json" },

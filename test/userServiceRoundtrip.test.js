@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
-import { CoordinatorRegistry } from "../src/coordinatorRegistry.js";
 import { verifyAuthToken } from "../src/tokenService.js";
 import { createUserServiceServer } from "../src/server.js";
 import { UserStore } from "../src/userStore.js";
@@ -15,11 +14,7 @@ async function startServer() {
   await mkdir(dir, { recursive: true });
   const store = new UserStore({ storagePath: path.join(dir, "store.json") });
   await store.init();
-  const coordinatorRegistry = new CoordinatorRegistry({
-    filePath: path.join(dir, "coordinators.json")
-  });
-  await coordinatorRegistry.init();
-  const server = createUserServiceServer({ store, coordinatorRegistry });
+  const server = createUserServiceServer({ store });
   await new Promise((resolve) => server.listen(0, resolve));
   const address = server.address();
   const baseUrl = `http://127.0.0.1:${address.port}`;
