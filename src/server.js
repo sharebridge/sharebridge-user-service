@@ -9,7 +9,13 @@ import {
 } from "./cors.js";
 import { createGoogleAuthVerifier } from "./googleAuth.js";
 import { PostgresUserStore } from "./postgresUserStore.js";
-import { ROLE_COORDINATOR, ROLE_DONOR, isValidRole } from "./roles.js";
+import {
+  ROLE_COORDINATOR,
+  ROLE_DONOR,
+  clientRoleError,
+  isValidRole,
+  roleForClientType
+} from "./roles.js";
 import { mintAuthToken } from "./tokenService.js";
 
 const DEFAULT_PORT = Number(process.env.PORT || 8081);
@@ -83,12 +89,9 @@ function devTokenMintEnabled() {
   return flag === "1" || flag === "true";
 }
 
-async function resolveUserRoles(store, userId) {
+async function loadUserRoles(store, userId) {
   await store.ensureRole(userId, ROLE_DONOR);
-  const roles = await store.getRolesForUser(userId);
-  const isCoordinator = roles.includes(ROLE_COORDINATOR);
-  const activeRole = isCoordinator ? ROLE_COORDINATOR : ROLE_DONOR;
-  return { roles, activeRole, isCoordinator };
+  return store.getRolesForUser(userId);
 }
 
 export function createUserServiceServer({
@@ -139,26 +142,12 @@ export function createUserServiceServer({
           name: googleProfile.name,
           picture: googleProfile.picture
         });
-        const { roles, activeRole: role } = await resolveUserRoles(store, user.id);
-        if (clientType === "web" && role !== ROLE_COORDINATOR) {
-          return sendJson(res, 403, {
-            code: "wrong_client_role",
-            message:
-              "This Google account is not a coordinator. Use the mobile app as a donor."
-          });
+        const roles = await loadUserRoles(store, user.id);
+        const roleError = clientRoleError(clientType, roles);
+        if (roleError) {
+          return sendJson(res, 403, roleError);
         }
-        if (
-          (clientType === "android" ||
-            clientType === "ios" ||
-            clientType === "mobile") &&
-          role === ROLE_COORDINATOR
-        ) {
-          return sendJson(res, 403, {
-            code: "wrong_client_role",
-            message:
-              "Coordinator accounts must use the web dashboard, not the mobile donor app."
-          });
-        }
+        const role = roleForClientType(clientType, roles);
         const token = mintAuthToken(user.id, { role, roles });
         return sendJson(res, 200, {
           token,

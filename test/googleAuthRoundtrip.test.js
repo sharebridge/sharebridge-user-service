@@ -95,6 +95,72 @@ test("POST /v1/auth/google rejects donor on web client", async () => {
   }
 });
 
+test("POST /v1/auth/google mints donor on mobile when user has donor and coordinator", async () => {
+  const { store, dir } = await tempStore();
+  const googleAuthVerifier = {
+    audiences: ["test-client"],
+    async verifyIdToken() {
+      return {
+        googleSub: "google-sub-both",
+        email: "both@example.com",
+        emailVerified: true,
+        name: "Both Roles",
+        picture: null
+      };
+    }
+  };
+  const server = createUserServiceServer({
+    store,
+    googleAuthVerifier
+  });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const { port } = server.address();
+
+  try {
+    const user = await store.findOrCreateGoogleUser({
+      googleSub: "google-sub-both",
+      email: "both@example.com",
+      name: "Both Roles",
+      picture: null
+    });
+    await store.ensureRole(user.id, ROLE_COORDINATOR);
+
+    const mobile = await fetch(`http://127.0.0.1:${port}/v1/auth/google`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id_token: "fake",
+        client_type: "android"
+      })
+    });
+    assert.equal(mobile.status, 200);
+    const mobileBody = await mobile.json();
+    assert.equal(mobileBody.user.role, ROLE_DONOR);
+    assert.ok(mobileBody.token);
+    const mobileJwt = verifyAuthToken(mobileBody.token);
+    assert.equal(mobileJwt.role, ROLE_DONOR);
+    assert.ok(mobileJwt.roles.includes(ROLE_COORDINATOR));
+    assert.ok(mobileJwt.roles.includes(ROLE_DONOR));
+
+    const web = await fetch(`http://127.0.0.1:${port}/v1/auth/google`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id_token: "fake",
+        client_type: "web"
+      })
+    });
+    assert.equal(web.status, 200);
+    const webBody = await web.json();
+    assert.equal(webBody.user.role, ROLE_COORDINATOR);
+    const webJwt = verifyAuthToken(webBody.token);
+    assert.equal(webJwt.role, ROLE_COORDINATOR);
+  } finally {
+    server.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("POST /v1/auth/google mints coordinator when user_roles has coordinator", async () => {
   const { store, dir } = await tempStore();
   const googleAuthVerifier = {
