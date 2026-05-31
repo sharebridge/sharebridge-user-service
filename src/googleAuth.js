@@ -20,6 +20,22 @@ export function createGoogleAuthVerifier({ clientIds = parseClientIds() } = {}) 
 
   return {
     audiences,
+    async verifyAccessToken(accessToken) {
+      if (typeof accessToken !== "string" || !accessToken.trim()) {
+        throw new Error("access_token is required.");
+      }
+      const info = await oauth.getTokenInfo(accessToken.trim());
+      if (!info.sub) {
+        throw new Error("Google token missing subject.");
+      }
+      return {
+        googleSub: info.sub,
+        email: info.email || null,
+        emailVerified: info.email_verified === true,
+        name: null,
+        picture: null
+      };
+    },
     async verifyIdToken(idToken) {
       if (typeof idToken !== "string" || !idToken.trim()) {
         throw new Error("id_token is required.");

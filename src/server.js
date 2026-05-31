@@ -119,17 +119,23 @@ export function createUserServiceServer({
         const payload = await parseJsonBody(req);
         const idToken =
           typeof payload.id_token === "string" ? payload.id_token.trim() : "";
-        if (!idToken) {
+        const accessToken =
+          typeof payload.access_token === "string"
+            ? payload.access_token.trim()
+            : "";
+        if (!idToken && !accessToken) {
           return sendJson(res, 400, {
             code: "invalid_request",
-            message: "id_token is required."
+            message: "id_token or access_token is required."
           });
         }
         const clientType =
           typeof payload.client_type === "string"
             ? payload.client_type.trim().toLowerCase()
             : "web";
-        const googleProfile = await googleAuth.verifyIdToken(idToken);
+        const googleProfile = accessToken
+          ? await googleAuth.verifyAccessToken(accessToken)
+          : await googleAuth.verifyIdToken(idToken);
         if (!googleProfile.email) {
           return sendJson(res, 400, {
             code: "invalid_request",

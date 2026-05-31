@@ -95,6 +95,57 @@ test("POST /v1/auth/google rejects donor on web client", async () => {
   }
 });
 
+test("POST /v1/auth/google accepts access_token for web account picker sign-in", async () => {
+  const { store, dir } = await tempStore();
+  const googleAuthVerifier = {
+    audiences: ["test-client"],
+    async verifyAccessToken() {
+      return {
+        googleSub: "google-sub-switch",
+        email: "other@example.com",
+        emailVerified: true,
+        name: "Other Coordinator",
+        picture: null
+      };
+    }
+  };
+  const server = createUserServiceServer({
+    store,
+    googleAuthVerifier
+  });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const { port } = server.address();
+
+  try {
+    await store.ensureRole(
+      (
+        await store.findOrCreateGoogleUser({
+          googleSub: "google-sub-switch",
+          email: "other@example.com",
+          name: "Other Coordinator",
+          picture: null
+        })
+      ).id,
+      ROLE_COORDINATOR
+    );
+    const response = await fetch(`http://127.0.0.1:${port}/v1/auth/google`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        access_token: "fake-access",
+        client_type: "web"
+      })
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.user.role, ROLE_COORDINATOR);
+    assert.equal(body.user.email, "other@example.com");
+  } finally {
+    server.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("POST /v1/auth/google mints donor on mobile when user has donor and coordinator", async () => {
   const { store, dir } = await tempStore();
   const googleAuthVerifier = {
