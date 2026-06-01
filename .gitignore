@@ -10,13 +10,9 @@ coverage/
 build/
 dist/
 
-# Environment
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
+# Environment (never commit secrets) — copy env.example to .env locally
+.env*
 # IDE
 .vscode/
 .idea/
