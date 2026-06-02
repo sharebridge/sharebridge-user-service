@@ -16,6 +16,7 @@ import {
   isValidRole,
   roleForClientType
 } from "./roles.js";
+import { webSignInDenialIfAny } from "./webSignInDenial.js";
 import {
   googleSignInBypassEnabled,
   warnIgnoredUnlockFlags,
@@ -158,9 +159,12 @@ export function createUserServiceServer({
           picture: googleProfile.picture
         });
         const roles = await loadUserRoles(store, user.id);
-        const roleError = clientRoleError(clientType, roles, {
-          allowWebDashboardAnyUser
-        });
+        const roleError =
+          clientType === "web"
+            ? webSignInDenialIfAny(roles, { allowWebDashboardAnyUser })
+            : clientRoleError(clientType, roles, {
+                allowWebDashboardAnyUser
+              });
         if (roleError) {
           return sendJson(res, 403, roleError);
         }

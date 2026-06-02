@@ -132,6 +132,8 @@ test("POST /v1/auth/google ignores ALLOW_WEB_DASHBOARD_ANY_USER when DEPLOYMENT_
       })
     });
     assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.equal(body.reason, "mvp_disabled_production");
   } finally {
     server.close();
     await rm(dir, { recursive: true, force: true });
@@ -174,6 +176,7 @@ test("POST /v1/auth/google rejects donor on web client", async () => {
     assert.equal(response.status, 403);
     const body = await response.json();
     assert.equal(body.code, "wrong_client_role");
+    assert.equal(body.reason, "coordinator_required");
   } finally {
     server.close();
     await rm(dir, { recursive: true, force: true });

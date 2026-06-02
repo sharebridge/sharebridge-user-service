@@ -43,6 +43,7 @@ export function clientRoleError(
       }
       return {
         code: "wrong_client_role",
+        reason: "coordinator_required",
         message:
           "This Google account is not a coordinator. Use the mobile app as a donor."
       };
