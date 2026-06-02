@@ -56,6 +56,48 @@ test("POST /v1/auth/google mints donor token for mobile client", async () => {
   }
 });
 
+test("POST /v1/auth/google allows donor on web when allowWebDashboardAnyUser", async () => {
+  const { store, dir } = await tempStore();
+  const googleAuthVerifier = {
+    audiences: ["test-client"],
+    async verifyIdToken() {
+      return {
+        googleSub: "google-sub-donor-mvp",
+        email: "donor-mvp@example.com",
+        emailVerified: true,
+        name: "MVP Donor",
+        picture: null
+      };
+    }
+  };
+  const server = createUserServiceServer({
+    store,
+    googleAuthVerifier,
+    allowWebDashboardAnyUser: true
+  });
+  await new Promise((resolve) => server.listen(0, resolve));
+  const { port } = server.address();
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/v1/auth/google`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id_token: "fake",
+        client_type: "web"
+      })
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.user.role, ROLE_COORDINATOR);
+    const payload = verifyAuthToken(body.token);
+    assert.equal(payload.role, ROLE_COORDINATOR);
+  } finally {
+    server.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("POST /v1/auth/google rejects donor on web client", async () => {
   const { store, dir } = await tempStore();
   const googleAuthVerifier = {

@@ -89,6 +89,12 @@ function devTokenMintEnabled() {
   return flag === "1" || flag === "true";
 }
 
+export function webDashboardAnyUserEnabled(
+  flag = process.env.ALLOW_WEB_DASHBOARD_ANY_USER
+) {
+  return flag === "1" || flag === "true";
+}
+
 async function loadUserRoles(store, userId) {
   await store.ensureRole(userId, ROLE_DONOR);
   return store.getRolesForUser(userId);
@@ -97,7 +103,8 @@ async function loadUserRoles(store, userId) {
 export function createUserServiceServer({
   store,
   googleAuthVerifier,
-  corsConfig = parseCorsOrigins()
+  corsConfig = parseCorsOrigins(),
+  allowWebDashboardAnyUser = webDashboardAnyUserEnabled()
 }) {
   if (!store) {
     throw new Error("createUserServiceServer requires store.");
@@ -149,7 +156,9 @@ export function createUserServiceServer({
           picture: googleProfile.picture
         });
         const roles = await loadUserRoles(store, user.id);
-        const roleError = clientRoleError(clientType, roles);
+        const roleError = clientRoleError(clientType, roles, {
+          allowWebDashboardAnyUser
+        });
         if (roleError) {
           return sendJson(res, 403, roleError);
         }

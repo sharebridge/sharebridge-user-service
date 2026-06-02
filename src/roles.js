@@ -22,7 +22,11 @@ export function roleForClientType(clientType, roles) {
   return roles.includes(ROLE_COORDINATOR) ? ROLE_COORDINATOR : ROLE_DONOR;
 }
 
-export function clientRoleError(clientType, roles) {
+export function clientRoleError(
+  clientType,
+  roles,
+  { allowWebDashboardAnyUser = false } = {}
+) {
   if (isMobileClientType(clientType)) {
     if (!roles.includes(ROLE_DONOR)) {
       return {
@@ -34,6 +38,9 @@ export function clientRoleError(clientType, roles) {
   }
   if (clientType === "web") {
     if (!roles.includes(ROLE_COORDINATOR)) {
+      if (allowWebDashboardAnyUser && roles.includes(ROLE_DONOR)) {
+        return null;
+      }
       return {
         code: "wrong_client_role",
         message:
