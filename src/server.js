@@ -16,7 +16,16 @@ import {
   isValidRole,
   roleForClientType
 } from "./roles.js";
+import {
+  devUnlockFlagEnabled,
+  warnIgnoredUnlockFlags,
+  webDashboardAnyUserEnabled
+} from "./deploymentEnv.js";
 import { mintAuthToken } from "./tokenService.js";
+
+export { webDashboardAnyUserEnabled };
+
+warnIgnoredUnlockFlags();
 
 const DEFAULT_PORT = Number(process.env.PORT || 8081);
 
@@ -85,14 +94,7 @@ function parseDonorPresetsDeleteItemPath(urlPath) {
 }
 
 function devTokenMintEnabled() {
-  const flag = process.env.ALLOW_DEV_TOKEN_MINT;
-  return flag === "1" || flag === "true";
-}
-
-export function webDashboardAnyUserEnabled(
-  flag = process.env.ALLOW_WEB_DASHBOARD_ANY_USER
-) {
-  return flag === "1" || flag === "true";
+  return devUnlockFlagEnabled("ALLOW_DEV_TOKEN_MINT");
 }
 
 async function loadUserRoles(store, userId) {
