@@ -27,10 +27,7 @@ const ENV_KEYS = [
   "NODE_ENV",
   "RENDER",
   "ALLOW_WEB_DASHBOARD_ANY_USER",
-  "BYPASS_GOOGLE_SIGN_IN",
-  "ALLOW_GOOGLE_SIGN_IN_BYPASS",
-  "ALLOW_DEV_SIGN_IN",
-  "ALLOW_DEV_TOKEN_MINT"
+  "BYPASS_GOOGLE_SIGN_IN"
 ];
 
 test("isProductionDeployment respects DEPLOYMENT_ENV", () => {
@@ -76,24 +73,14 @@ test("devUnlockFlagEnabled is false in production even when flag is true", () =>
   }
 });
 
-test("googleSignInBypassEnabled accepts BYPASS_GOOGLE_SIGN_IN and legacy names", () => {
+test("googleSignInBypassEnabled uses BYPASS_GOOGLE_SIGN_IN only", () => {
   saveEnv(ENV_KEYS);
   try {
     process.env.DEPLOYMENT_ENV = "development";
-    for (const key of [
-      ENV_BYPASS_GOOGLE_SIGN_IN,
-      "ALLOW_GOOGLE_SIGN_IN_BYPASS",
-      "ALLOW_DEV_SIGN_IN",
-      "ALLOW_DEV_TOKEN_MINT"
-    ]) {
-      delete process.env.BYPASS_GOOGLE_SIGN_IN;
-      delete process.env.ALLOW_GOOGLE_SIGN_IN_BYPASS;
-      delete process.env.ALLOW_DEV_SIGN_IN;
-      delete process.env.ALLOW_DEV_TOKEN_MINT;
-      assert.equal(googleSignInBypassEnabled(), false);
-      process.env[key] = "true";
-      assert.equal(googleSignInBypassEnabled(), true);
-    }
+    delete process.env.BYPASS_GOOGLE_SIGN_IN;
+    assert.equal(googleSignInBypassEnabled(), false);
+    process.env[ENV_BYPASS_GOOGLE_SIGN_IN] = "true";
+    assert.equal(googleSignInBypassEnabled(), true);
   } finally {
     restoreEnv(ENV_KEYS);
   }
