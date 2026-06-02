@@ -7,7 +7,7 @@ import { verifyAuthToken } from "../src/tokenService.js";
 import { createUserServiceServer } from "../src/server.js";
 import { UserStore } from "../src/userStore.js";
 
-process.env.ALLOW_DEV_TOKEN_MINT = "true";
+process.env.BYPASS_GOOGLE_SIGN_IN = "true";
 
 async function startServer() {
   const dir = path.join(os.tmpdir(), `user-service-${Date.now()}`);

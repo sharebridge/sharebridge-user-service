@@ -17,7 +17,7 @@ import {
   roleForClientType
 } from "./roles.js";
 import {
-  devUnlockFlagEnabled,
+  googleSignInBypassEnabled,
   warnIgnoredUnlockFlags,
   webDashboardAnyUserEnabled
 } from "./deploymentEnv.js";
@@ -94,7 +94,7 @@ function parseDonorPresetsDeleteItemPath(urlPath) {
 }
 
 function devTokenMintEnabled() {
-  return devUnlockFlagEnabled("ALLOW_DEV_TOKEN_MINT");
+  return googleSignInBypassEnabled();
 }
 
 async function loadUserRoles(store, userId) {
@@ -190,7 +190,7 @@ export function createUserServiceServer({
         return sendJson(res, 403, {
           code: "dev_auth_disabled",
           message:
-            "Dev token mint is disabled. Use POST /v1/auth/google or set ALLOW_DEV_TOKEN_MINT=true."
+            "Google sign-in bypass is disabled. Use POST /v1/auth/google or set BYPASS_GOOGLE_SIGN_IN=true."
         });
       }
       try {
