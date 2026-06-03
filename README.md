@@ -23,8 +23,7 @@ npm start
 
 | Method | Path | Notes |
 |--------|------|--------|
-| POST | `/v1/auth/google` | `{ "id_token", "client_type": "web" \| "mobile" }` |
-| POST | `/v1/auth/token` | Dev only when `BYPASS_GOOGLE_SIGN_IN=true` |
+| POST | `/v1/auth/google` | `{ "id_token" \| "access_token", "client_type": "web" \| "mobile" }` → JWT |
 | GET/PUT | `/v1/users/:userId/donor-presets` | Bearer JWT |
 | POST | `/v1/users/:userId/donor-presets/delete-item` | Single preset delete |
 
@@ -34,7 +33,7 @@ Coordinators: seed `user_roles` in Postgres — [coordinator-seed.sql](https://g
 
 Deploy **before** integration-service. [configuration/backend-render.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/backend-render.md). Blueprint: `render.yaml`.
 
-Set `GOOGLE_CLIENT_ID_WEB`, `WEB_CORS_ORIGINS`, `AUTH_TOKEN_SECRET`; `BYPASS_GOOGLE_SIGN_IN=false` on Render. Optional dev/MVP flags: [environment-variables.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/environment-variables.md).
+Set `GOOGLE_CLIENT_ID_WEB`, `WEB_CORS_ORIGINS`, `AUTH_TOKEN_SECRET` on Render. See [environment-variables.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/environment-variables.md).
 
 ## License
 

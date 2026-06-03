@@ -21,7 +21,5 @@ services:
         value: sharingbridge-clients
       - key: AUTH_TOKEN_TTL_SECONDS
         value: "3600"
-      - key: DEPLOYMENT_ENV
-        value: production
       - key: WEB_CORS_ORIGINS
         sync: false

@@ -10,23 +10,11 @@ import {
 import { createGoogleAuthVerifier } from "./googleAuth.js";
 import { PostgresUserStore } from "./postgresUserStore.js";
 import {
-  ROLE_COORDINATOR,
   ROLE_DONOR,
   clientRoleError,
-  isValidRole,
   roleForClientType
 } from "./roles.js";
-import { webSignInDenialIfAny } from "./webSignInDenial.js";
-import {
-  googleSignInBypassEnabled,
-  warnIgnoredUnlockFlags,
-  webDashboardAnyUserEnabled
-} from "./deploymentEnv.js";
 import { mintAuthToken } from "./tokenService.js";
-
-export { webDashboardAnyUserEnabled };
-
-warnIgnoredUnlockFlags();
 
 const DEFAULT_PORT = Number(process.env.PORT || 8081);
 
@@ -94,10 +82,6 @@ function parseDonorPresetsDeleteItemPath(urlPath) {
   return decodeURIComponent(match[1]);
 }
 
-function devTokenMintEnabled() {
-  return googleSignInBypassEnabled();
-}
-
 async function loadUserRoles(store, userId) {
   await store.ensureRole(userId, ROLE_DONOR);
   return store.getRolesForUser(userId);
@@ -106,8 +90,7 @@ async function loadUserRoles(store, userId) {
 export function createUserServiceServer({
   store,
   googleAuthVerifier,
-  corsConfig = parseCorsOrigins(),
-  allowWebDashboardAnyUser = webDashboardAnyUserEnabled()
+  corsConfig = parseCorsOrigins()
 }) {
   if (!store) {
     throw new Error("createUserServiceServer requires store.");
@@ -159,12 +142,7 @@ export function createUserServiceServer({
           picture: googleProfile.picture
         });
         const roles = await loadUserRoles(store, user.id);
-        const roleError =
-          clientType === "web"
-            ? webSignInDenialIfAny(roles, { allowWebDashboardAnyUser })
-            : clientRoleError(clientType, roles, {
-                allowWebDashboardAnyUser
-              });
+        const roleError = clientRoleError(clientType, roles);
         if (roleError) {
           return sendJson(res, 403, roleError);
         }
@@ -186,45 +164,6 @@ export function createUserServiceServer({
           code: "invalid_google_token",
           message: error?.message || "Google sign-in failed."
         });
-      }
-    }
-
-    if (req.method === "POST" && req.url === "/v1/auth/token") {
-      if (!devTokenMintEnabled()) {
-        return sendJson(res, 403, {
-          code: "dev_auth_disabled",
-          message:
-            "Google sign-in bypass is disabled. Use POST /v1/auth/google or set BYPASS_GOOGLE_SIGN_IN=true."
-        });
-      }
-      try {
-        const payload = await parseJsonBody(req);
-        const fromBody =
-          typeof payload.user_id === "string" && payload.user_id.trim().length > 0
-            ? payload.user_id.trim()
-            : null;
-        const userId = fromBody || `demo-user-${Date.now()}`;
-        const roleRaw =
-          typeof payload.role === "string" ? payload.role.trim() : ROLE_DONOR;
-        const role = isValidRole(roleRaw) ? roleRaw : ROLE_DONOR;
-        const user = await store.getOrCreateUser({
-          userId,
-          phone: payload.phone,
-          email: payload.email
-        });
-        await store.ensureRole(userId, ROLE_DONOR);
-        if (role === ROLE_COORDINATOR) {
-          await store.ensureRole(userId, ROLE_COORDINATOR);
-        }
-        const roles = await store.getRolesForUser(userId);
-        return sendJson(res, 200, {
-          token: mintAuthToken(userId, { role, roles }),
-          token_type: "Bearer",
-          user: { ...user, role }
-        });
-      } catch (error) {
-        const body = JSON.parse(error.message);
-        return sendJson(res, 400, body);
       }
     }
 

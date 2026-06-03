@@ -3,11 +3,9 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
-import { verifyAuthToken } from "../src/tokenService.js";
+import { verifyAuthToken, mintAuthToken } from "../src/tokenService.js";
 import { createUserServiceServer } from "../src/server.js";
 import { UserStore } from "../src/userStore.js";
-
-process.env.BYPASS_GOOGLE_SIGN_IN = "true";
 
 async function startServer() {
   const dir = path.join(os.tmpdir(), `user-service-${Date.now()}`);
@@ -28,46 +26,21 @@ async function startServer() {
   };
 }
 
-async function issueToken(baseUrl, userId) {
-  const response = await fetch(`${baseUrl}/v1/auth/token`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ user_id: userId })
-  });
-  const body = await response.json();
-  return body.token;
+function issueToken(userId, role = "donor") {
+  return mintAuthToken(userId, { role });
 }
 
-test("issues signed token and creates donor user model", async () => {
-  const app = await startServer();
-  try {
-    const response = await fetch(`${app.baseUrl}/v1/auth/token`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        user_id: "donor-001",
-        phone: "+911234567890",
-        email: "donor@example.com"
-      })
-    });
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    const claims = verifyAuthToken(payload.token);
-    assert.equal(claims.sub, "donor-001");
-    assert.equal(payload.token_type, "Bearer");
-    assert.equal(payload.user.id, "donor-001");
-    assert.equal(payload.user.phone, "+911234567890");
-    assert.equal(payload.user.email, "donor@example.com");
-    assert.ok(payload.user.created_at);
-  } finally {
-    await app.close();
-  }
+test("mintAuthToken produces verifiable donor claims", () => {
+  const token = mintAuthToken("donor-001", { role: "donor" });
+  const claims = verifyAuthToken(token);
+  assert.equal(claims.sub, "donor-001");
+  assert.equal(claims.role, "donor");
 });
 
 test("upserts donor presets and returns deduped set", async () => {
   const app = await startServer();
   try {
-    const token = await issueToken(app.baseUrl, "donor-abc");
+    const token = issueToken("donor-abc");
     const putResponse = await fetch(
       `${app.baseUrl}/v1/users/donor-abc/donor-presets`,
       {
@@ -121,7 +94,7 @@ test("upserts donor presets and returns deduped set", async () => {
 test("POST donor-presets/delete-item removes one preset", async () => {
   const app = await startServer();
   try {
-    const token = await issueToken(app.baseUrl, "donor-del");
+    const token = issueToken("donor-del");
     const put = await fetch(`${app.baseUrl}/v1/users/donor-del/donor-presets`, {
       method: "PUT",
       headers: {
@@ -189,7 +162,7 @@ test("returns 401 and 403 for auth failures", async () => {
     const unauthorizedBody = await unauthorized.json();
     assert.equal(unauthorizedBody.code, "missing_auth_context");
 
-    const otherToken = await issueToken(app.baseUrl, "other-user");
+    const otherToken = issueToken("other-user");
     const forbidden = await fetch(
       `${app.baseUrl}/v1/users/target-user/donor-presets`,
       {
@@ -229,17 +202,17 @@ test("unknown routes return 404 JSON", async () => {
   }
 });
 
-test("POST /v1/auth/token rejects malformed JSON", async () => {
+test("POST /v1/auth/token is not available", async () => {
   const app = await startServer();
   try {
     const res = await fetch(`${app.baseUrl}/v1/auth/token`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: "{bad"
+      body: JSON.stringify({ user_id: "demo" })
     });
-    assert.equal(res.status, 400);
+    assert.equal(res.status, 404);
     const body = await res.json();
-    assert.equal(body.code, "invalid_json");
+    assert.equal(body.code, "not_found");
   } finally {
     await app.close();
   }
@@ -248,7 +221,7 @@ test("POST /v1/auth/token rejects malformed JSON", async () => {
 test("PUT donor-presets rejects malformed JSON", async () => {
   const app = await startServer();
   try {
-    const token = await issueToken(app.baseUrl, "json-user");
+    const token = issueToken("json-user");
     const res = await fetch(`${app.baseUrl}/v1/users/json-user/donor-presets`, {
       method: "PUT",
       headers: {
@@ -268,7 +241,7 @@ test("PUT donor-presets rejects malformed JSON", async () => {
 test("PUT donor-presets requires presets array", async () => {
   const app = await startServer();
   try {
-    const token = await issueToken(app.baseUrl, "arr-user");
+    const token = issueToken("arr-user");
     const res = await fetch(`${app.baseUrl}/v1/users/arr-user/donor-presets`, {
       method: "PUT",
       headers: {
@@ -289,7 +262,7 @@ test("PUT donor-presets requires presets array", async () => {
 test("PUT donor-presets validates preset fields", async () => {
   const app = await startServer();
   try {
-    const token = await issueToken(app.baseUrl, "val-user");
+    const token = issueToken("val-user");
     const res = await fetch(`${app.baseUrl}/v1/users/val-user/donor-presets`, {
       method: "PUT",
       headers: {
@@ -322,7 +295,7 @@ test("donor-presets path accepts URL-encoded user id", async () => {
   const app = await startServer();
   try {
     const userId = "donor/with-id";
-    const token = await issueToken(app.baseUrl, userId);
+    const token = issueToken(userId);
     const encoded = encodeURIComponent(userId);
     const put = await fetch(`${app.baseUrl}/v1/users/${encoded}/donor-presets`, {
       method: "PUT",

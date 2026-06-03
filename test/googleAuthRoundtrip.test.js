@@ -56,94 +56,7 @@ test("POST /v1/auth/google mints donor token for mobile client", async () => {
   }
 });
 
-test("POST /v1/auth/google allows donor on web when allowWebDashboardAnyUser", async () => {
-  const { store, dir } = await tempStore();
-  const googleAuthVerifier = {
-    audiences: ["test-client"],
-    async verifyIdToken() {
-      return {
-        googleSub: "google-sub-donor-mvp",
-        email: "donor-mvp@example.com",
-        emailVerified: true,
-        name: "MVP Donor",
-        picture: null
-      };
-    }
-  };
-  const server = createUserServiceServer({
-    store,
-    googleAuthVerifier,
-    allowWebDashboardAnyUser: true
-  });
-  await new Promise((resolve) => server.listen(0, resolve));
-  const { port } = server.address();
-
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/v1/auth/google`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        id_token: "fake",
-        client_type: "web"
-      })
-    });
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.user.role, ROLE_COORDINATOR);
-    const payload = verifyAuthToken(body.token);
-    assert.equal(payload.role, ROLE_COORDINATOR);
-  } finally {
-    server.close();
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
-test("POST /v1/auth/google ignores ALLOW_WEB_DASHBOARD_ANY_USER when DEPLOYMENT_ENV is production", async () => {
-  const prior = process.env.DEPLOYMENT_ENV;
-  process.env.DEPLOYMENT_ENV = "production";
-  process.env.ALLOW_WEB_DASHBOARD_ANY_USER = "true";
-  const { store, dir } = await tempStore();
-  const googleAuthVerifier = {
-    audiences: ["test-client"],
-    async verifyIdToken() {
-      return {
-        googleSub: "google-sub-donor-prod-guard",
-        email: "donor-prod@example.com",
-        emailVerified: true,
-        name: null,
-        picture: null
-      };
-    }
-  };
-  const server = createUserServiceServer({
-    store,
-    googleAuthVerifier
-  });
-  await new Promise((resolve) => server.listen(0, resolve));
-  const { port } = server.address();
-
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/v1/auth/google`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        id_token: "fake",
-        client_type: "web"
-      })
-    });
-    assert.equal(response.status, 403);
-    const body = await response.json();
-    assert.equal(body.reason, "mvp_disabled_production");
-  } finally {
-    server.close();
-    await rm(dir, { recursive: true, force: true });
-    if (prior === undefined) delete process.env.DEPLOYMENT_ENV;
-    else process.env.DEPLOYMENT_ENV = prior;
-    delete process.env.ALLOW_WEB_DASHBOARD_ANY_USER;
-  }
-});
-
-test("POST /v1/auth/google rejects donor on web client", async () => {
+test("POST /v1/auth/google mints donor on web for donor-only account", async () => {
   const { store, dir } = await tempStore();
   const googleAuthVerifier = {
     audiences: ["test-client"],
@@ -173,10 +86,11 @@ test("POST /v1/auth/google rejects donor on web client", async () => {
         client_type: "web"
       })
     });
-    assert.equal(response.status, 403);
+    assert.equal(response.status, 200);
     const body = await response.json();
-    assert.equal(body.code, "wrong_client_role");
-    assert.equal(body.reason, "coordinator_required");
+    assert.equal(body.user.role, ROLE_DONOR);
+    const payload = verifyAuthToken(body.token);
+    assert.equal(payload.role, ROLE_DONOR);
   } finally {
     server.close();
     await rm(dir, { recursive: true, force: true });
