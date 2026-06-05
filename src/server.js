@@ -15,6 +15,12 @@ import {
   roleForClientType
 } from "./roles.js";
 import { mintAuthToken } from "./tokenService.js";
+import { logListenMessage, logStartupFromIssues } from "./serviceLog.js";
+import {
+  buildHealthConfig,
+  buildStartupConfig,
+  collectStartupIssues
+} from "./startupConfig.js";
 
 const DEFAULT_PORT = Number(process.env.PORT || 8081);
 
@@ -104,7 +110,11 @@ export function createUserServiceServer({
     }
 
     if (req.method === "GET" && req.url === "/health") {
-      return sendJson(res, 200, { ok: true, service: "user-service" });
+      return sendJson(res, 200, {
+        ok: true,
+        service: "user-service",
+        config: buildHealthConfig()
+      });
     }
 
     if (req.method === "POST" && req.url === "/v1/auth/google") {
@@ -268,7 +278,11 @@ if (isMainModule) {
   await store.init();
   const server = createUserServiceServer({ store });
   server.listen(DEFAULT_PORT, () => {
-    // eslint-disable-next-line no-console
-    console.log(`User service listening on ${DEFAULT_PORT} (PostgreSQL)`);
+    const startupConfig = buildStartupConfig();
+    logListenMessage(
+      console,
+      `User service listening on ${DEFAULT_PORT} (PostgreSQL)`
+    );
+    logStartupFromIssues(startupConfig, collectStartupIssues(startupConfig));
   });
 }
