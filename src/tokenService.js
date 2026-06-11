@@ -38,7 +38,7 @@ export function mintAuthToken(userId, options = {}) {
   const role =
     typeof options.role === "string" && options.role.trim()
       ? options.role.trim()
-      : "donor";
+      : "initiator";
   const roles = Array.isArray(options.roles)
     ? options.roles.filter((r) => typeof r === "string" && r.trim())
     : [role];

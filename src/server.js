@@ -21,6 +21,7 @@ import {
   buildStartupConfig,
   collectStartupIssues
 } from "./startupConfig.js";
+import { normalizeUserServiceApiPath } from "./apiPathAliases.js";
 
 const DEFAULT_PORT = Number(process.env.PORT || 8081);
 
@@ -104,6 +105,7 @@ export function createUserServiceServer({
   const googleAuth = googleAuthVerifier ?? createGoogleAuthVerifier();
 
   return createServer(async (req, res) => {
+    req.url = normalizeUserServiceApiPath(req.url);
     applyCorsHeaders(req, res, corsConfig);
     if (handleCorsPreflight(req, res, corsConfig)) {
       return;

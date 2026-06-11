@@ -1,10 +1,10 @@
 # sharingbridge-user-service
 
-> Authentication, Google Sign-In, donor presets (Node.js MVP)
+> Authentication, Google Sign-In, vendor presets (Node.js MVP)
 
 ## Status
 
-**Shipped:** `POST /v1/auth/google` (web coordinator + mobile donor roles), JWT mint/verify, donor presets APIs, **PostgreSQL** via `DATABASE_URL` (required).
+**Shipped:** `POST /v1/auth/google` (web coordinator + mobile payee role `donor`), JWT mint/verify, vendor preset APIs (`donor-presets` table), **PostgreSQL** via `DATABASE_URL` (required).
 
 **Doc map:** [AGENT_HANDOFF.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/AGENT_HANDOFF.md) § Documentation map.
 

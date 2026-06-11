@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { ROLE_COORDINATOR, ROLE_DONOR } from "../src/roles.js";
+import { ROLE_COORDINATOR, ROLE_DONOR, ROLE_INITIATOR } from "../src/roles.js";
 import { createUserServiceServer } from "../src/server.js";
 import { UserStore } from "../src/userStore.js";
 import { verifyAuthToken } from "../src/tokenService.js";
@@ -15,7 +15,7 @@ async function tempStore() {
   return { store, dir };
 }
 
-test("POST /v1/auth/google mints donor token for mobile client", async () => {
+test("POST /v1/auth/google mints initiator token for mobile client", async () => {
   const { store, dir } = await tempStore();
   const googleAuthVerifier = {
     audiences: ["test-client"],
@@ -47,16 +47,16 @@ test("POST /v1/auth/google mints donor token for mobile client", async () => {
     });
     assert.equal(response.status, 200);
     const body = await response.json();
-    assert.equal(body.user.role, ROLE_DONOR);
+    assert.equal(body.user.role, ROLE_INITIATOR);
     const payload = verifyAuthToken(body.token);
-    assert.equal(payload.role, ROLE_DONOR);
+    assert.equal(payload.role, ROLE_INITIATOR);
   } finally {
     server.close();
     await rm(dir, { recursive: true, force: true });
   }
 });
 
-test("POST /v1/auth/google mints donor on web for donor-only account", async () => {
+test("POST /v1/auth/google mints initiator on web for donor-only account", async () => {
   const { store, dir } = await tempStore();
   const googleAuthVerifier = {
     audiences: ["test-client"],
@@ -88,9 +88,9 @@ test("POST /v1/auth/google mints donor on web for donor-only account", async () 
     });
     assert.equal(response.status, 200);
     const body = await response.json();
-    assert.equal(body.user.role, ROLE_DONOR);
+    assert.equal(body.user.role, ROLE_INITIATOR);
     const payload = verifyAuthToken(body.token);
-    assert.equal(payload.role, ROLE_DONOR);
+    assert.equal(payload.role, ROLE_INITIATOR);
   } finally {
     server.close();
     await rm(dir, { recursive: true, force: true });
@@ -188,10 +188,10 @@ test("POST /v1/auth/google mints donor on mobile when user has donor and coordin
     });
     assert.equal(mobile.status, 200);
     const mobileBody = await mobile.json();
-    assert.equal(mobileBody.user.role, ROLE_DONOR);
+    assert.equal(mobileBody.user.role, ROLE_INITIATOR);
     assert.ok(mobileBody.token);
     const mobileJwt = verifyAuthToken(mobileBody.token);
-    assert.equal(mobileJwt.role, ROLE_DONOR);
+    assert.equal(mobileJwt.role, ROLE_INITIATOR);
     assert.ok(mobileJwt.roles.includes(ROLE_COORDINATOR));
     assert.ok(mobileJwt.roles.includes(ROLE_DONOR));
 
