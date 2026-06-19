@@ -14,6 +14,36 @@ function parseClientIds() {
   return [...new Set(combined)];
 }
 
+const GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
+
+async function fetchGoogleUserInfo(accessToken) {
+  const response = await fetch(GOOGLE_USERINFO_URL, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json"
+    }
+  });
+  const text = await response.text();
+  let body = {};
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new Error("Google userinfo response was not valid JSON.");
+    }
+  }
+  if (!response.ok) {
+    const detail =
+      typeof body.error_description === "string"
+        ? body.error_description
+        : typeof body.error === "string"
+          ? body.error
+          : `HTTP ${response.status}`;
+    throw new Error(`Google access token validation failed: ${detail}`);
+  }
+  return body;
+}
+
 export function createGoogleAuthVerifier({ clientIds = parseClientIds() } = {}) {
   const oauth = new OAuth2Client();
   const audiences = clientIds;
@@ -24,7 +54,7 @@ export function createGoogleAuthVerifier({ clientIds = parseClientIds() } = {}) 
       if (typeof accessToken !== "string" || !accessToken.trim()) {
         throw new Error("access_token is required.");
       }
-      const info = await oauth.getTokenInfo(accessToken.trim());
+      const info = await fetchGoogleUserInfo(accessToken.trim());
       if (!info.sub) {
         throw new Error("Google token missing subject.");
       }
@@ -32,8 +62,8 @@ export function createGoogleAuthVerifier({ clientIds = parseClientIds() } = {}) 
         googleSub: info.sub,
         email: info.email || null,
         emailVerified: info.email_verified === true,
-        name: null,
-        picture: null
+        name: info.name || null,
+        picture: info.picture || null
       };
     },
     async verifyIdToken(idToken) {
