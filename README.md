@@ -4,9 +4,9 @@
 
 ## Status
 
-**Shipped:** `POST /v1/auth/google` (web coordinator + mobile payee role `donor`), JWT mint/verify, vendor preset APIs (`donor-presets` table), **PostgreSQL** via `DATABASE_URL` (required).
+**Shipped:** `POST /v1/auth/google` (web coordinator + mobile payee), JWT mint/verify, vendor preset APIs (`donor_presets` table), **PostgreSQL** via `DATABASE_URL` (required).
 
-**Doc map:** [AGENT_HANDOFF.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/AGENT_HANDOFF.md) § Documentation map.
+**Doc map:** [STATUS.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/STATUS.md) · [AGENT_SESSION.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/AGENT_SESSION.md)
 
 ## Run locally
 
