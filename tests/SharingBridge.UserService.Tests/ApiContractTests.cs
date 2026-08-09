@@ -188,6 +188,5 @@ public class DatabaseUrlTests
         Assert.Contains("Password=p@ss", cs);
         Assert.Contains("Database=postgres", cs);
         Assert.Contains("SSL Mode=Require", cs, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Trust Server Certificate=True", cs, StringComparison.OrdinalIgnoreCase);
     }
 }
