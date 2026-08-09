@@ -112,8 +112,11 @@ public static class DatabaseUrl
             builder.MaxAutoPrepare = 0;
             builder.Timeout = Math.Max(builder.Timeout, 30);
             builder.CommandTimeout = Math.Max(builder.CommandTimeout, 30);
-            // Fresh connections avoid stale Supavisor pool entries after deploy SELECT 1.
-            builder.Pooling = false;
+            // Session-mode pooler (:5432) supports client pooling; keep it modest for free tier.
+            builder.Pooling = true;
+            builder.MinPoolSize = 0;
+            builder.MaxPoolSize = Math.Min(builder.MaxPoolSize == 0 ? 5 : builder.MaxPoolSize, 5);
+            builder.ConnectionIdleLifetime = 60;
             builder.Multiplexing = false;
         }
 

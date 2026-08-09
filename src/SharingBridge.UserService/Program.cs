@@ -137,10 +137,22 @@ app.MapPost("/v1/auth/google", async (
                 statusCode: 400);
         }
 
-        var user = await store.FindOrCreateGoogleUserAsync(
-            profile.GoogleSub, profile.Email, profile.Name, profile.Picture, ct);
-        await store.EnsureRoleAsync(user.Id, Roles.Donor, ct);
-        var roles = await store.GetRolesForUserAsync(user.Id, ct);
+        var user = await DbRetry.ExecuteAsync(
+            token => store.FindOrCreateGoogleUserAsync(
+                profile.GoogleSub, profile.Email, profile.Name, profile.Picture, token),
+            logger,
+            maxAttempts: 3,
+            ct);
+        await DbRetry.ExecuteAsync(
+            token => store.EnsureRoleAsync(user.Id, Roles.Donor, token),
+            logger,
+            maxAttempts: 3,
+            ct);
+        var roles = await DbRetry.ExecuteAsync(
+            token => store.GetRolesForUserAsync(user.Id, token),
+            logger,
+            maxAttempts: 3,
+            ct);
         var roleError = Roles.ClientRoleError(clientType, roles);
         if (roleError is not null)
         {

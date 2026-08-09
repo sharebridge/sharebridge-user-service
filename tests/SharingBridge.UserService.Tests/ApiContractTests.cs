@@ -196,6 +196,29 @@ public class DatabaseUrlTests
         var cs = DatabaseUrl.Normalize(
             "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres");
         Assert.Contains("Port=5432", cs);
-        Assert.Contains("Pooling=False", cs, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Pooling=True", cs, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Maximum Pool Size=5", cs, StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+public class DbRetryTests
+{
+    [Fact]
+    public async Task Retries_transient_failure_then_succeeds()
+    {
+        var attempts = 0;
+        var result = await DbRetry.ExecuteAsync(async _ =>
+        {
+            attempts++;
+            if (attempts < 3)
+            {
+                throw new TimeoutException("Timeout during reading attempt");
+            }
+
+            return "ok";
+        }, maxAttempts: 3);
+
+        Assert.Equal("ok", result);
+        Assert.Equal(3, attempts);
     }
 }
