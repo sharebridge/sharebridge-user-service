@@ -88,8 +88,6 @@ public static class DatabaseUrl
 
             // Transaction pooler (6543) does not support prepared statements.
             builder.MaxAutoPrepare = 0;
-            // Supavisor often closes the socket if GSS negotiation is attempted.
-            builder.GssEncryptionMode = GssEncryptionMode.Disable;
             builder.Timeout = Math.Max(builder.Timeout, 60);
             builder.CommandTimeout = Math.Max(builder.CommandTimeout, 60);
             builder.MaxPoolSize = Math.Min(builder.MaxPoolSize == 0 ? 5 : builder.MaxPoolSize, 5);
