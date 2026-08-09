@@ -19,5 +19,4 @@ services:
         value: "3600"
       - key: WEB_CORS_ORIGINS
         sync: false
-      - key: PORT
-        value: "8081"
+      # Do not set PORT — Render injects it for Docker web services.

@@ -250,9 +250,15 @@ app.MapPost("/v1/users/{userId}/initiator-presets/delete-item", DeletePresetItem
 app.MapFallback(() =>
     Results.Json(new ErrorBody { Code = "not_found", Message = "Route not found." }, statusCode: 404));
 
-var port = app.Configuration["PORT"] ?? "8081";
+// Render sets PORT for Docker web services; local default 8081.
+var port = Environment.GetEnvironmentVariable("PORT")
+    ?? app.Configuration["PORT"]
+    ?? "8081";
 app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{port}");
+
+var listenLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+listenLogger.LogInformation("Binding http://0.0.0.0:{Port}", port);
 
 LogStartup(app);
 app.Run();
