@@ -87,8 +87,6 @@ public static class DatabaseUrl
                 builder.SslMode = SslMode.Require;
             }
 
-            // Supabase pooler certs: avoid verify-full failures on Render.
-            builder.TrustServerCertificate = true;
             builder.Timeout = Math.Max(builder.Timeout, 30);
         }
 
