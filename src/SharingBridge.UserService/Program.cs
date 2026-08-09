@@ -10,9 +10,10 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<GoogleAuthService>();
 
-var databaseUrl = builder.Configuration["DATABASE_URL"];
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? builder.Configuration["DATABASE_URL"];
 var useMemory = string.Equals(
-    builder.Configuration["USER_STORE"],
+    builder.Configuration["USER_STORE"] ?? Environment.GetEnvironmentVariable("USER_STORE"),
     "memory",
     StringComparison.OrdinalIgnoreCase);
 
@@ -27,8 +28,19 @@ if (useMemory || string.IsNullOrWhiteSpace(databaseUrl))
 }
 else
 {
-    var store = await PostgresUserStore.CreateAsync(databaseUrl);
-    builder.Services.AddSingleton<IUserStore>(store);
+    try
+    {
+        var store = await PostgresUserStore.CreateAsync(databaseUrl);
+        builder.Services.AddSingleton<IUserStore>(store);
+    }
+    catch (Exception ex)
+    {
+        throw new InvalidOperationException(
+            "Failed to open DATABASE_URL with Npgsql. Use the Supabase Postgres URI " +
+            "(postgresql://...), not the anon/service_role API key. " +
+            "If the password has special characters, URL-encode them.",
+            ex);
+    }
 }
 
 builder.Services.ConfigureHttpJsonOptions(options =>

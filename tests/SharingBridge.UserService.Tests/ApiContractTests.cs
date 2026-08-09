@@ -174,3 +174,19 @@ public class TokenServiceTests
         Assert.Equal("u_abc", sub);
     }
 }
+
+public class DatabaseUrlTests
+{
+    [Fact]
+    public void Normalizes_postgres_uri_and_strips_quotes()
+    {
+        var cs = DatabaseUrl.Normalize(
+            "\"postgres://user:p%40ss@db.example.com:6543/postgres?sslmode=require\"");
+        Assert.Contains("Host=db.example.com", cs);
+        Assert.Contains("Port=6543", cs);
+        Assert.Contains("Username=user", cs);
+        Assert.Contains("Password=p@ss", cs);
+        Assert.Contains("Database=postgres", cs);
+        Assert.Contains("SSL Mode=Require", cs, StringComparison.OrdinalIgnoreCase);
+    }
+}

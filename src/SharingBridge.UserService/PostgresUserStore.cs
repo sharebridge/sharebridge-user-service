@@ -32,7 +32,8 @@ public sealed class PostgresUserStore : IUserStore, IAsyncDisposable
             throw new InvalidOperationException("DATABASE_URL is required for PostgresUserStore.");
         }
 
-        var dataSource = NpgsqlDataSource.Create(connectionString.Trim());
+        var normalized = DatabaseUrl.Normalize(connectionString);
+        var dataSource = NpgsqlDataSource.Create(normalized);
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand("SELECT 1", conn);
         await cmd.ExecuteScalarAsync(ct);
