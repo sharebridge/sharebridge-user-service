@@ -1,18 +1,14 @@
-# Render Blueprint — one Web Service. Full guide:
+# Render Blueprint — Docker (.NET 8). Full guide:
 # https://github.com/sharingbridge/sharingbridge/blob/main/configuration/backend-render.md
 services:
   - type: web
     name: sharingbridge-user-service
-    runtime: node
+    runtime: docker
     plan: free
     branch: main
     autoDeploy: true
-    buildCommand: npm install
-    startCommand: npm start
     healthCheckPath: /health
     envVars:
-      - key: NODE_VERSION
-        value: "20"
       - key: AUTH_TOKEN_SECRET
         generateValue: true
       - key: AUTH_TOKEN_ISSUER
@@ -23,3 +19,5 @@ services:
         value: "3600"
       - key: WEB_CORS_ORIGINS
         sync: false
+      - key: PORT
+        value: "8081"

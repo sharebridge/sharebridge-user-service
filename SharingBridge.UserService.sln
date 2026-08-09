@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0858DAB6-A6C6-4F55-9C6A-258401C1341D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharingBridge.UserService", "src\SharingBridge.UserService\SharingBridge.UserService.csproj", "{AB488205-2F2B-4EB1-88E1-80914F61A4A1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{6EE5B9D3-4689-4659-9B65-86BFD012B149}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharingBridge.UserService.Tests", "tests\SharingBridge.UserService.Tests\SharingBridge.UserService.Tests.csproj", "{6710025D-AE81-49A9-8B23-9AFE7C319AE0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AB488205-2F2B-4EB1-88E1-80914F61A4A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB488205-2F2B-4EB1-88E1-80914F61A4A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB488205-2F2B-4EB1-88E1-80914F61A4A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB488205-2F2B-4EB1-88E1-80914F61A4A1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6710025D-AE81-49A9-8B23-9AFE7C319AE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6710025D-AE81-49A9-8B23-9AFE7C319AE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6710025D-AE81-49A9-8B23-9AFE7C319AE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6710025D-AE81-49A9-8B23-9AFE7C319AE0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{AB488205-2F2B-4EB1-88E1-80914F61A4A1} = {0858DAB6-A6C6-4F55-9C6A-258401C1341D}
+		{6710025D-AE81-49A9-8B23-9AFE7C319AE0} = {6EE5B9D3-4689-4659-9B65-86BFD012B149}
+	EndGlobalSection
+EndGlobal

@@ -1,39 +1,64 @@
 # sharingbridge-user-service
 
-> Authentication, Google Sign-In, vendor presets (Node.js MVP)
+> Authentication, Google Sign-In, donor/initiator presets — **ASP.NET Core 8 (C#)**
 
 ## Status
 
-**Shipped:** `POST /v1/auth/google` (web coordinator + mobile initiator), JWT mint/verify, vendor preset APIs (`donor_presets` table), **PostgreSQL** via `DATABASE_URL` (required).
+**Current runtime:** C# / .NET 8 Minimal APIs (Docker on Render).  
+**Legacy:** Node.js MVP kept under [`legacy-node/`](./legacy-node/) for rollback reference only.
 
-**Doc map:** [STATUS.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/STATUS.md) · [AGENT_SESSION.md](https://github.com/sharingbridge/sharingbridge/blob/main/development/AGENT_SESSION.md)
-
-## Run locally
-
-```bash
-npm install
-npm test
-npm start
-```
-
-- Health: `GET http://localhost:8081/health`
-- Copy `.env.example` → `.env` (see [configuration/google-auth-setup.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/google-auth-setup.md))
-
-### Endpoints
+Same HTTP contracts as before (web + mobile clients unchanged):
 
 | Method | Path | Notes |
 |--------|------|--------|
+| GET | `/health` | Render health check |
 | POST | `/v1/auth/google` | `{ "id_token" \| "access_token", "client_type": "web" \| "mobile" }` → JWT |
-| GET/PUT | `/v1/users/:userId/donor-presets` | Bearer JWT |
-| POST | `/v1/users/:userId/donor-presets/delete-item` | Single preset delete |
+| GET/PUT | `/v1/users/:userId/donor-presets` | Bearer JWT (`sub` must match) |
+| POST | `/v1/users/:userId/donor-presets/delete-item` | Bearer JWT |
+| — | `/v1/users/:userId/initiator-presets*` | Alias → `donor-presets` |
 
-Coordinators: seed `user_roles` in Postgres — [coordinator-seed.sql](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/coordinator-seed.sql) · [database.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/database.md).
+JWT: HS256, claims `sub`, `role`, `roles`, `iss`, `aud`, `iat`, `exp` — must stay compatible with integration-service and photo-service (`AUTH_TOKEN_SECRET` shared).
+
+## Stack placement
+
+| Language | Service |
+|----------|---------|
+| **C#** | **this service** (identity + presets) |
+| Spring Boot | integration / marketplace (planned) |
+| Python | AI orchestration, photo |
+| TypeScript | web dashboard |
+
+## Run locally
+
+Requires [.NET 8 SDK](https://dotnet.microsoft.com/download).
+
+```bash
+cp .env.example .env   # set DATABASE_URL, GOOGLE_CLIENT_ID_WEB, WEB_CORS_ORIGINS
+# Export vars into the shell, or set them in your IDE run config.
+dotnet run --project src/SharingBridge.UserService
+```
+
+Without Postgres (unit-style local):
+
+```bash
+set USER_STORE=memory
+dotnet run --project src/SharingBridge.UserService
+```
+
+- Health: `GET http://localhost:8081/health`
+- Docs: [google-auth-setup.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/google-auth-setup.md)
+
+```bash
+dotnet test
+```
 
 ## Deploy (Render)
 
-Deploy **before** integration-service. [configuration/backend-render.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/backend-render.md). Blueprint: `render.yaml`.
+`runtime: docker` — see `Dockerfile` and `render.yaml`.
 
-Set `GOOGLE_CLIENT_ID_WEB`, `WEB_CORS_ORIGINS`, `AUTH_TOKEN_SECRET` on Render. See [environment-variables.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/environment-variables.md).
+Set in the dashboard (same as before): `DATABASE_URL`, `GOOGLE_CLIENT_ID_WEB`, `WEB_CORS_ORIGINS`, and align `AUTH_TOKEN_SECRET` with integration + photo.
+
+Deploy **before** relying on integration-service auth. [backend-render.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/backend-render.md).
 
 ## License
 

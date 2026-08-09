@@ -1,6 +1,9 @@
-node_modules
-data
-.git
-.github
-test
-*.md
+**/bin/
+**/obj/
+**/TestResults/
+**/.vs/
+**/.git/
+**/legacy-node/
+**/.env
+**/.env.*
+!**/.env.example

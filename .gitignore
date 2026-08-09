@@ -1,38 +1,26 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+data/
+legacy-node/node_modules/
+
 
 # Testing
 coverage/
+TestResults/
 
-# Production
-build/
-dist/
+# Environment (never commit secrets)
+.env
+.env.*
+!.env.example
 
-
-# Environment (never commit secrets) — copy env.example to .env locally
-.env*
-# IDE
+# IDE / OS
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-
-# OS
 .DS_Store
 Thumbs.db
-
-# Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Misc
-.cache/
-.temp/
-
-# Local file-backed store (dev / accidental runs)
-data/
