@@ -22,8 +22,7 @@ public static class DatabaseUrl
 
         if (!value.Contains("://", StringComparison.Ordinal))
         {
-            // Already key=value form (Host=...;Username=...)
-            return value;
+            return ApplyHostedDefaults(new NpgsqlConnectionStringBuilder(value)).ConnectionString;
         }
 
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
@@ -67,28 +66,33 @@ public static class DatabaseUrl
             }
         }
 
-        // Supabase / most hosted Postgres require TLS.
-        if (builder.SslMode == SslMode.Disable &&
-            (uri.Host.Contains("supabase", StringComparison.OrdinalIgnoreCase) ||
-             uri.Host.Contains("render.com", StringComparison.OrdinalIgnoreCase)))
+        return ApplyHostedDefaults(builder).ConnectionString;
+    }
+
+    /// <summary>
+    /// Node <c>pg</c> often negotiates TLS implicitly; Npgsql needs explicit SSL for Supabase
+    /// or you get "Exception while reading from stream" mid-query.
+    /// </summary>
+    private static NpgsqlConnectionStringBuilder ApplyHostedDefaults(NpgsqlConnectionStringBuilder builder)
+    {
+        var host = builder.Host ?? "";
+        var isLocal =
+            host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+            host is "127.0.0.1" or "::1";
+
+        if (!isLocal)
         {
-            builder.SslMode = SslMode.Require;
+            if (builder.SslMode is SslMode.Disable or SslMode.Allow or SslMode.Prefer)
+            {
+                builder.SslMode = SslMode.Require;
+            }
+
+            // Supabase pooler certs: avoid verify-full failures on Render.
+            builder.TrustServerCertificate = true;
+            builder.Timeout = Math.Max(builder.Timeout, 30);
         }
 
-        if (builder.SslMode == SslMode.Disable && value.Contains("sslmode=require", StringComparison.OrdinalIgnoreCase))
-        {
-            builder.SslMode = SslMode.Require;
-        }
-
-        // Default for remote hosts when sslmode omitted (matches typical Node pg + Supabase).
-        if (builder.SslMode == SslMode.Disable &&
-            !uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) &&
-            uri.Host is not "127.0.0.1")
-        {
-            builder.SslMode = SslMode.Prefer;
-        }
-
-        return builder.ConnectionString;
+        return builder;
     }
 
     private static SslMode ParseSslMode(string value) =>
@@ -100,6 +104,6 @@ public static class DatabaseUrl
             "require" => SslMode.Require,
             "verify-ca" => SslMode.VerifyCA,
             "verify-full" => SslMode.VerifyFull,
-            _ => SslMode.Prefer
+            _ => SslMode.Require
         };
 }

@@ -99,8 +99,10 @@ app.MapPost("/v1/auth/google", async (
     IUserStore store,
     GoogleAuthService googleAuth,
     TokenService tokens,
+    ILoggerFactory loggerFactory,
     CancellationToken ct) =>
 {
+    var logger = loggerFactory.CreateLogger("Auth");
     try
     {
         var idToken = body.IdToken?.Trim() ?? "";
@@ -153,8 +155,20 @@ app.MapPost("/v1/auth/google", async (
             new ErrorBody { Code = "invalid_request", Message = ex.Message },
             statusCode: 400);
     }
+    catch (Exception ex) when (IsDatabaseFailure(ex))
+    {
+        logger.LogError(ex, "Database error during Google sign-in");
+        return Results.Json(
+            new ErrorBody
+            {
+                Code = "database_unavailable",
+                Message = "Could not reach the user database. Try again shortly."
+            },
+            statusCode: 503);
+    }
     catch (Exception ex)
     {
+        logger.LogWarning(ex, "Google sign-in failed");
         return Results.Json(
             new ErrorBody
             {
@@ -274,6 +288,32 @@ listenLogger.LogInformation("Binding http://0.0.0.0:{Port}", port);
 
 LogStartup(app);
 app.Run();
+
+static bool IsDatabaseFailure(Exception ex)
+{
+    for (var current = ex; current is not null; current = current.InnerException!)
+    {
+        if (current is Npgsql.NpgsqlException or Npgsql.PostgresException)
+        {
+            return true;
+        }
+
+        var message = current.Message ?? "";
+        if (message.Contains("Exception while reading from stream", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("Failed to connect", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (current.InnerException is null)
+        {
+            break;
+        }
+    }
+
+    return false;
+}
 
 static (string? UserId, IResult? Error) RequireUser(HttpRequest request, TokenService tokens, string pathUserId)
 {
