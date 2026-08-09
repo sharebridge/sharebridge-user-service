@@ -70,8 +70,7 @@ public static class DatabaseUrl
     }
 
     /// <summary>
-    /// Node <c>pg</c> often negotiates TLS implicitly; Npgsql needs explicit SSL for Supabase
-    /// or you get "Exception while reading from stream" mid-query.
+    /// Settings that keep Npgsql working with Supabase Supavisor / Render free tier.
     /// </summary>
     private static NpgsqlConnectionStringBuilder ApplyHostedDefaults(NpgsqlConnectionStringBuilder builder)
     {
@@ -87,7 +86,14 @@ public static class DatabaseUrl
                 builder.SslMode = SslMode.Require;
             }
 
-            builder.Timeout = Math.Max(builder.Timeout, 30);
+            // Transaction pooler (6543) does not support prepared statements.
+            builder.MaxAutoPrepare = 0;
+            // Supavisor often closes the socket if GSS negotiation is attempted.
+            builder.GssEncryptionMode = GssEncryptionMode.Disable;
+            builder.Timeout = Math.Max(builder.Timeout, 60);
+            builder.CommandTimeout = Math.Max(builder.CommandTimeout, 60);
+            builder.MaxPoolSize = Math.Min(builder.MaxPoolSize == 0 ? 5 : builder.MaxPoolSize, 5);
+            builder.Multiplexing = false;
         }
 
         return builder;
