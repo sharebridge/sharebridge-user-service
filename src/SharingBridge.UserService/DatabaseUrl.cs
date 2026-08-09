@@ -41,10 +41,19 @@ public static class DatabaseUrl
             database = "postgres";
         }
 
+        var port = uri.IsDefaultPort ? 5432 : uri.Port;
+        // Supabase transaction pooler (6543) routinely hangs Npgsql ("Timeout during reading").
+        // Session mode on the same host uses 5432 and works with persistent .NET services.
+        if (port == 6543 &&
+            uri.Host.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase))
+        {
+            port = 5432;
+        }
+
         var builder = new NpgsqlConnectionStringBuilder
         {
             Host = uri.Host,
-            Port = uri.IsDefaultPort ? 5432 : uri.Port,
+            Port = port,
             Database = database,
             Username = username,
             Password = password
@@ -69,6 +78,19 @@ public static class DatabaseUrl
         return ApplyHostedDefaults(builder).ConnectionString;
     }
 
+    public static string DescribeForLog(string normalizedConnectionString)
+    {
+        try
+        {
+            var b = new NpgsqlConnectionStringBuilder(normalizedConnectionString);
+            return $"Host={b.Host};Port={b.Port};Database={b.Database};Username={b.Username};SSL Mode={b.SslMode};Pooling={b.Pooling};Max Auto Prepare={b.MaxAutoPrepare}";
+        }
+        catch
+        {
+            return "(unparseable connection string)";
+        }
+    }
+
     /// <summary>
     /// Settings that keep Npgsql working with Supabase Supavisor / Render free tier.
     /// </summary>
@@ -86,11 +108,12 @@ public static class DatabaseUrl
                 builder.SslMode = SslMode.Require;
             }
 
-            // Transaction pooler (6543) does not support prepared statements.
+            // Transaction pooler does not support prepared statements; disable anyway.
             builder.MaxAutoPrepare = 0;
-            builder.Timeout = Math.Max(builder.Timeout, 60);
-            builder.CommandTimeout = Math.Max(builder.CommandTimeout, 60);
-            builder.MaxPoolSize = Math.Min(builder.MaxPoolSize == 0 ? 5 : builder.MaxPoolSize, 5);
+            builder.Timeout = Math.Max(builder.Timeout, 30);
+            builder.CommandTimeout = Math.Max(builder.CommandTimeout, 30);
+            // Fresh connections avoid stale Supavisor pool entries after deploy SELECT 1.
+            builder.Pooling = false;
             builder.Multiplexing = false;
         }
 

@@ -30,15 +30,18 @@ else
 {
     try
     {
-        var store = await PostgresUserStore.CreateAsync(databaseUrl);
+        using var startupLogFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
+        var store = await PostgresUserStore.CreateAsync(
+            databaseUrl,
+            startupLogFactory.CreateLogger("Startup"));
         builder.Services.AddSingleton<IUserStore>(store);
     }
     catch (Exception ex)
     {
         throw new InvalidOperationException(
-            "Failed to open DATABASE_URL with Npgsql. Use the Supabase Postgres URI " +
-            "(postgresql://...), not the anon/service_role API key. " +
-            "If the password has special characters, URL-encode them.",
+            "Failed to open DATABASE_URL with Npgsql. Prefer Supabase Session pooler " +
+            "(port 5432 on *.pooler.supabase.com), not Transaction (6543). " +
+            "Use the Postgres URI, not the anon/service_role API key.",
             ex);
     }
 }

@@ -25,7 +25,10 @@ public sealed class PostgresUserStore : IUserStore, IAsyncDisposable
         _dataSource = dataSource;
     }
 
-    public static async Task<PostgresUserStore> CreateAsync(string connectionString, CancellationToken ct = default)
+    public static async Task<PostgresUserStore> CreateAsync(
+        string connectionString,
+        ILogger? logger = null,
+        CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -33,6 +36,7 @@ public sealed class PostgresUserStore : IUserStore, IAsyncDisposable
         }
 
         var normalized = DatabaseUrl.Normalize(connectionString);
+        logger?.LogInformation("Postgres connection: {Conn}", DatabaseUrl.DescribeForLog(normalized));
         var dataSource = NpgsqlDataSource.Create(normalized);
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand("SELECT 1", conn);
