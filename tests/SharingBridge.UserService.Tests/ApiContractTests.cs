@@ -189,4 +189,13 @@ public class DatabaseUrlTests
         Assert.Contains("Database=postgres", cs);
         Assert.Contains("SSL Mode=Require", cs, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Rewrites_supabase_transaction_pooler_to_session_port()
+    {
+        var cs = DatabaseUrl.Normalize(
+            "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres");
+        Assert.Contains("Port=5432", cs);
+        Assert.Contains("Pooling=False", cs, StringComparison.OrdinalIgnoreCase);
+    }
 }
