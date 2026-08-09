@@ -194,10 +194,35 @@ public class DatabaseUrlTests
     public void Rewrites_supabase_transaction_pooler_to_session_port()
     {
         var cs = DatabaseUrl.Normalize(
-            "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres");
+            "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres",
+            new DataAccessOptions { Pooling = true, PoolMaxSize = 5 });
         Assert.Contains("Port=5432", cs);
         Assert.Contains("Pooling=True", cs, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Maximum Pool Size=5", cs, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Respects_pool_options_from_configuration()
+    {
+        var options = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DB_POOLING"] = "false",
+                ["DB_POOL_MAX"] = "2",
+                ["DB_RETRY_MAX_ATTEMPTS"] = "5",
+                ["DB_RETRY_BASE_DELAY_MS"] = "50"
+            })
+            .Build());
+
+        Assert.False(options.Pooling);
+        Assert.Equal(2, options.PoolMaxSize);
+        Assert.Equal(5, options.RetryMaxAttempts);
+        Assert.Equal(50, options.RetryBaseDelayMs);
+
+        var cs = DatabaseUrl.Normalize(
+            "postgresql://user:pass@db.example.com:5432/postgres",
+            options);
+        Assert.Contains("Pooling=False", cs, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -216,7 +241,7 @@ public class DbRetryTests
             }
 
             return "ok";
-        }, maxAttempts: 3);
+        }, options: new DataAccessOptions { RetryMaxAttempts = 3, RetryBaseDelayMs = 0 });
 
         Assert.Equal("ok", result);
         Assert.Equal(3, attempts);

@@ -10,6 +10,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<GoogleAuthService>();
 
+var dataAccess = DataAccessOptions.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(dataAccess);
+
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration["DATABASE_URL"];
 var useMemory = string.Equals(
@@ -33,6 +36,7 @@ else
         using var startupLogFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
         var store = await PostgresUserStore.CreateAsync(
             databaseUrl,
+            dataAccess,
             startupLogFactory.CreateLogger("Startup"));
         builder.Services.AddSingleton<IUserStore>(store);
     }
@@ -41,7 +45,8 @@ else
         throw new InvalidOperationException(
             "Failed to open DATABASE_URL with Npgsql. Prefer Supabase Session pooler " +
             "(port 5432 on *.pooler.supabase.com), not Transaction (6543). " +
-            "Use the Postgres URI, not the anon/service_role API key.",
+            "Use the Postgres URI, not the anon/service_role API key. " +
+            "Tune DB_POOL_* / DB_RETRY_* via environment variables.",
             ex);
     }
 }
@@ -77,7 +82,7 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
-app.MapGet("/health", (IConfiguration config) =>
+app.MapGet("/health", (IConfiguration config, DataAccessOptions dataAccessOptions) =>
 {
     var logLevel = (config["LOG_LEVEL"] ?? "warn").Trim().ToLowerInvariant();
     return Results.Json(new
@@ -87,12 +92,14 @@ app.MapGet("/health", (IConfiguration config) =>
         config = new
         {
             service = "user-service",
-            database_url_set = !string.IsNullOrWhiteSpace(config["DATABASE_URL"]),
+            database_url_set = !string.IsNullOrWhiteSpace(
+                config["DATABASE_URL"] ?? Environment.GetEnvironmentVariable("DATABASE_URL")),
             web_cors_origins_set = !string.IsNullOrWhiteSpace(config["WEB_CORS_ORIGINS"]),
             google_client_id_web_set = !string.IsNullOrWhiteSpace(config["GOOGLE_CLIENT_ID_WEB"]),
             google_client_id_android_set = !string.IsNullOrWhiteSpace(config["GOOGLE_CLIENT_ID_ANDROID"]),
             auth_token_secret_set = !string.IsNullOrWhiteSpace(config["AUTH_TOKEN_SECRET"]),
-            log_level = logLevel
+            log_level = logLevel,
+            data_access = dataAccessOptions.ToPublicConfig()
         }
     });
 });
@@ -102,6 +109,7 @@ app.MapPost("/v1/auth/google", async (
     IUserStore store,
     GoogleAuthService googleAuth,
     TokenService tokens,
+    DataAccessOptions dataAccessOptions,
     ILoggerFactory loggerFactory,
     CancellationToken ct) =>
 {
@@ -141,17 +149,17 @@ app.MapPost("/v1/auth/google", async (
             token => store.FindOrCreateGoogleUserAsync(
                 profile.GoogleSub, profile.Email, profile.Name, profile.Picture, token),
             logger,
-            maxAttempts: 3,
+            dataAccessOptions,
             ct);
         await DbRetry.ExecuteAsync(
             token => store.EnsureRoleAsync(user.Id, Roles.Donor, token),
             logger,
-            maxAttempts: 3,
+            dataAccessOptions,
             ct);
         var roles = await DbRetry.ExecuteAsync(
             token => store.GetRolesForUserAsync(user.Id, token),
             logger,
-            maxAttempts: 3,
+            dataAccessOptions,
             ct);
         var roleError = Roles.ClientRoleError(clientType, roles);
         if (roleError is not null)

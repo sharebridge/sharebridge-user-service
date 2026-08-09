@@ -27,6 +27,7 @@ public sealed class PostgresUserStore : IUserStore, IAsyncDisposable
 
     public static async Task<PostgresUserStore> CreateAsync(
         string connectionString,
+        DataAccessOptions? options = null,
         ILogger? logger = null,
         CancellationToken ct = default)
     {
@@ -35,8 +36,10 @@ public sealed class PostgresUserStore : IUserStore, IAsyncDisposable
             throw new InvalidOperationException("DATABASE_URL is required for PostgresUserStore.");
         }
 
-        var normalized = DatabaseUrl.Normalize(connectionString);
+        options ??= new DataAccessOptions();
+        var normalized = DatabaseUrl.Normalize(connectionString, options);
         logger?.LogInformation("Postgres connection: {Conn}", DatabaseUrl.DescribeForLog(normalized));
+        logger?.LogInformation("Data access options: {@Options}", options.ToPublicConfig());
         var dataSource = NpgsqlDataSource.Create(normalized);
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await using var cmd = new NpgsqlCommand("SELECT 1", conn);

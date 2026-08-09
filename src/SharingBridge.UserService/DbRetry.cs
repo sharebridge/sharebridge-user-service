@@ -8,9 +8,13 @@ public static class DbRetry
     public static async Task<T> ExecuteAsync<T>(
         Func<CancellationToken, Task<T>> action,
         ILogger? logger = null,
-        int maxAttempts = 3,
+        DataAccessOptions? options = null,
         CancellationToken ct = default)
     {
+        options ??= new DataAccessOptions();
+        var maxAttempts = options.RetryMaxAttempts;
+        var baseDelayMs = options.RetryBaseDelayMs;
+
         Exception? last = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -22,14 +26,17 @@ public static class DbRetry
             catch (Exception ex) when (IsTransient(ex) && attempt < maxAttempts)
             {
                 last = ex;
-                var delayMs = 200 * attempt * attempt;
+                var delayMs = baseDelayMs * attempt * attempt;
                 logger?.LogWarning(
                     ex,
                     "Transient DB failure (attempt {Attempt}/{Max}); retrying in {DelayMs}ms",
                     attempt,
                     maxAttempts,
                     delayMs);
-                await Task.Delay(delayMs, ct);
+                if (delayMs > 0)
+                {
+                    await Task.Delay(delayMs, ct);
+                }
             }
         }
 
@@ -39,14 +46,14 @@ public static class DbRetry
     public static async Task ExecuteAsync(
         Func<CancellationToken, Task> action,
         ILogger? logger = null,
-        int maxAttempts = 3,
+        DataAccessOptions? options = null,
         CancellationToken ct = default)
     {
         await ExecuteAsync(async token =>
         {
             await action(token);
             return true;
-        }, logger, maxAttempts, ct);
+        }, logger, options, ct);
     }
 
     public static bool IsTransient(Exception ex)
@@ -60,7 +67,6 @@ public static class DbRetry
 
             if (current is NpgsqlException npgsql)
             {
-                // Transient: timeouts, connection breaks; not constraint/SQL state errors.
                 if (npgsql.InnerException is TimeoutException or IOException)
                 {
                     return true;

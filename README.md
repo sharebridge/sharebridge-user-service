@@ -38,6 +38,8 @@ cp .env.example .env   # set DATABASE_URL, GOOGLE_CLIENT_ID_WEB, WEB_CORS_ORIGIN
 dotnet run --project src/SharingBridge.UserService
 ```
 
+Optional pool/retry env vars (`DB_POOLING`, `DB_POOL_MAX`, `DB_RETRY_MAX_ATTEMPTS`, …) — see `.env.example` and [environment-variables.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/environment-variables.md#sharingbridge-user-service). Defaults apply when unset. `GET /health` → `config.data_access` shows the effective values.
+
 Without Postgres (unit-style local):
 
 ```bash

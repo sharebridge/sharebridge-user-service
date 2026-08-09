@@ -4,11 +4,14 @@ namespace SharingBridge.UserService;
 
 /// <summary>
 /// Node <c>pg</c> accepts Postgres URIs as-is. Npgsql is stricter — normalize for Supabase/Render.
+/// Pool/timeout behaviour comes from <see cref="DataAccessOptions"/> (env), not hardcoded constants.
 /// </summary>
 public static class DatabaseUrl
 {
-    public static string Normalize(string? raw)
+    public static string Normalize(string? raw, DataAccessOptions? options = null)
     {
+        options ??= new DataAccessOptions();
+
         if (string.IsNullOrWhiteSpace(raw))
         {
             throw new InvalidOperationException("DATABASE_URL is empty.");
@@ -22,7 +25,7 @@ public static class DatabaseUrl
 
         if (!value.Contains("://", StringComparison.Ordinal))
         {
-            return ApplyHostedDefaults(new NpgsqlConnectionStringBuilder(value)).ConnectionString;
+            return ApplyHostedDefaults(new NpgsqlConnectionStringBuilder(value), options).ConnectionString;
         }
 
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
@@ -44,7 +47,8 @@ public static class DatabaseUrl
         var port = uri.IsDefaultPort ? 5432 : uri.Port;
         // Supabase transaction pooler (6543) routinely hangs Npgsql ("Timeout during reading").
         // Session mode on the same host uses 5432 and works with persistent .NET services.
-        if (port == 6543 &&
+        if (options.RewriteSupabaseTransactionPort &&
+            port == 6543 &&
             uri.Host.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase))
         {
             port = 5432;
@@ -75,7 +79,7 @@ public static class DatabaseUrl
             }
         }
 
-        return ApplyHostedDefaults(builder).ConnectionString;
+        return ApplyHostedDefaults(builder, options).ConnectionString;
     }
 
     public static string DescribeForLog(string normalizedConnectionString)
@@ -83,7 +87,7 @@ public static class DatabaseUrl
         try
         {
             var b = new NpgsqlConnectionStringBuilder(normalizedConnectionString);
-            return $"Host={b.Host};Port={b.Port};Database={b.Database};Username={b.Username};SSL Mode={b.SslMode};Pooling={b.Pooling};Max Auto Prepare={b.MaxAutoPrepare}";
+            return $"Host={b.Host};Port={b.Port};Database={b.Database};Username={b.Username};SSL Mode={b.SslMode};Pooling={b.Pooling};Maximum Pool Size={b.MaxPoolSize};Max Auto Prepare={b.MaxAutoPrepare}";
         }
         catch
         {
@@ -91,10 +95,9 @@ public static class DatabaseUrl
         }
     }
 
-    /// <summary>
-    /// Settings that keep Npgsql working with Supabase Supavisor / Render free tier.
-    /// </summary>
-    private static NpgsqlConnectionStringBuilder ApplyHostedDefaults(NpgsqlConnectionStringBuilder builder)
+    private static NpgsqlConnectionStringBuilder ApplyHostedDefaults(
+        NpgsqlConnectionStringBuilder builder,
+        DataAccessOptions options)
     {
         var host = builder.Host ?? "";
         var isLocal =
@@ -110,15 +113,15 @@ public static class DatabaseUrl
 
             // Transaction pooler does not support prepared statements; disable anyway.
             builder.MaxAutoPrepare = 0;
-            builder.Timeout = Math.Max(builder.Timeout, 30);
-            builder.CommandTimeout = Math.Max(builder.CommandTimeout, 30);
-            // Session-mode pooler (:5432) supports client pooling; keep it modest for free tier.
-            builder.Pooling = true;
-            builder.MinPoolSize = 0;
-            builder.MaxPoolSize = Math.Min(builder.MaxPoolSize == 0 ? 5 : builder.MaxPoolSize, 5);
-            builder.ConnectionIdleLifetime = 60;
             builder.Multiplexing = false;
         }
+
+        builder.Pooling = options.Pooling;
+        builder.MinPoolSize = options.PoolMinSize;
+        builder.MaxPoolSize = Math.Max(options.PoolMinSize, options.PoolMaxSize);
+        builder.ConnectionIdleLifetime = options.ConnectionIdleLifetimeSeconds;
+        builder.Timeout = options.ConnectionTimeoutSeconds;
+        builder.CommandTimeout = options.CommandTimeoutSeconds;
 
         return builder;
     }
