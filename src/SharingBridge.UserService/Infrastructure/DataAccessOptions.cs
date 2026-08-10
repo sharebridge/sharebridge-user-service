@@ -22,9 +22,6 @@ public sealed class DataAccessOptions
     public const string TimeoutKey = "DB_TIMEOUT_SECONDS";
     public const string CommandTimeoutKey = "DB_COMMAND_TIMEOUT_SECONDS";
     public const string SupabasePoolPortKey = "DB_SUPABASE_POOL_6543_4TR_5432_4SESN";
-    /// <summary>Previous env names — still accepted as fallbacks.</summary>
-    public const string SupabasePoolPortKeyLegacyA = "DB_SUPABASE_POOL_6543TRANS_5432SESSION";
-    public const string SupabasePoolPortKeyLegacyB = "DB_REWRITE_SUPABASE_TRANSACTION_PORT";
     public const string RetryMaxKey = "DB_RETRY_MAX_ATTEMPTS";
     public const string RetryBaseDelayKey = "DB_RETRY_BASE_DELAY_MS";
 
@@ -34,7 +31,7 @@ public sealed class DataAccessOptions
     public int ConnectionIdleLifetimeSeconds { get; init; } = 60;
     public int ConnectionTimeoutSeconds { get; init; } = 30;
     public int CommandTimeoutSeconds { get; init; } = 30;
-    /// <summary>Default <see cref="SupabasePoolPort.Session"/> (5432) — Npgsql-safe.</summary>
+    /// <summary>Default <see cref="SupabasePoolPort.Session"/> (5432) when env is unset.</summary>
     public SupabasePoolPort SupabasePoolPort { get; init; } = SupabasePoolPort.Session;
     public int RetryMaxAttempts { get; init; } = 3;
     public int RetryBaseDelayMs { get; init; } = 200;
@@ -49,11 +46,7 @@ public sealed class DataAccessOptions
             ConnectionIdleLifetimeSeconds = ReadInt(config, IdleLifetimeKey, 60, min: 1, max: 3600),
             ConnectionTimeoutSeconds = ReadInt(config, TimeoutKey, 30, min: 1, max: 300),
             CommandTimeoutSeconds = ReadInt(config, CommandTimeoutKey, 30, min: 1, max: 300),
-            SupabasePoolPort =
-                TryReadSupabasePoolPort(config, SupabasePoolPortKey)
-                ?? TryReadSupabasePoolPort(config, SupabasePoolPortKeyLegacyA)
-                ?? TryReadSupabasePoolPort(config, SupabasePoolPortKeyLegacyB)
-                ?? SupabasePoolPort.Session,
+            SupabasePoolPort = ReadSupabasePoolPort(config),
             RetryMaxAttempts = ReadInt(config, RetryMaxKey, 3, min: 1, max: 10),
             RetryBaseDelayMs = ReadInt(config, RetryBaseDelayKey, 200, min: 0, max: 30_000)
         };
@@ -72,35 +65,23 @@ public sealed class DataAccessOptions
         retry_base_delay_ms = RetryBaseDelayMs
     };
 
-    private static SupabasePoolPort? TryReadSupabasePoolPort(IConfiguration config, string key)
+    private static SupabasePoolPort ReadSupabasePoolPort(IConfiguration config)
     {
-        var raw = FirstNonEmpty(config[key], Environment.GetEnvironmentVariable(key));
+        var raw = FirstNonEmpty(config[SupabasePoolPortKey], Environment.GetEnvironmentVariable(SupabasePoolPortKey));
         if (string.IsNullOrWhiteSpace(raw))
         {
-            return null;
+            return SupabasePoolPort.Session;
         }
 
         var trimmed = raw.Trim();
-        if (int.TryParse(trimmed, out var port))
+        if (int.TryParse(trimmed, out var port) &&
+            Enum.IsDefined(typeof(SupabasePoolPort), port))
         {
-            return port switch
-            {
-                (int)SupabasePoolPort.Session => SupabasePoolPort.Session,
-                (int)SupabasePoolPort.Transaction => SupabasePoolPort.Transaction,
-                _ => null
-            };
+            return (SupabasePoolPort)port;
         }
 
-        // Legacy aliases from earlier env shapes.
-        var normalized = trimmed.ToUpperInvariant().Replace("-", "").Replace("_", "");
-        return normalized switch
-        {
-            "5432SESSION" or "SESSION5432" or "SESSION" or "1" or "TRUE" or "YES" or "ON"
-                => SupabasePoolPort.Session,
-            "6543TRANS" or "TRANS6543" or "TRANSACTION" or "TRANSACTION6543"
-                => SupabasePoolPort.Transaction,
-            _ => null
-        };
+        throw new InvalidOperationException(
+            $"{SupabasePoolPortKey} must be 5432 (session) or 6543 (transaction); got '{trimmed}'.");
     }
 
     private static bool? TryReadBool(IConfiguration config, string key)

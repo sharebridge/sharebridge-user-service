@@ -55,15 +55,17 @@ public class DataAccessOptionsTests
     }
 
     [Fact]
-    public void Rejects_unknown_supabase_pool_port_and_keeps_default()
+    public void Invalid_supabase_pool_port_fails_fast()
     {
-        var options = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["DB_SUPABASE_POOL_6543_4TR_5432_4SESN"] = "9999"
-            })
-            .Build());
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["DB_SUPABASE_POOL_6543_4TR_5432_4SESN"] = "9999"
+                })
+                .Build()));
 
-        Assert.Equal(SupabasePoolPort.Session, options.SupabasePoolPort);
+        Assert.Contains("must be 5432", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("9999", ex.Message, StringComparison.Ordinal);
     }
 }
