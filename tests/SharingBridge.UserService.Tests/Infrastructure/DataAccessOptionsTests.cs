@@ -28,4 +28,22 @@ public class DataAccessOptionsTests
             options);
         Assert.Contains("Pooling=False", cs, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Reads_supabase_pool_6543_to_5432_flag()
+    {
+        var options = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DB_SUPABASE_POOL_6543TRANS_5432SESSION"] = "false"
+            })
+            .Build());
+
+        Assert.False(options.SupabasePool6543TransTo5432Session);
+
+        var cs = DatabaseUrl.Normalize(
+            "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres",
+            options);
+        Assert.Contains("Port=6543", cs);
+    }
 }
