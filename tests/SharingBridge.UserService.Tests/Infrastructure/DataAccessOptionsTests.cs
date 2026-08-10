@@ -30,7 +30,32 @@ public class DataAccessOptionsTests
     }
 
     [Fact]
-    public void Reads_supabase_pool_6543_to_5432_flag()
+    public void Reads_supabase_pool_mode_5432SESSION_and_6543TRANS()
+    {
+        var session = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DB_SUPABASE_POOL_6543TRANS_5432SESSION"] = "5432SESSION"
+            })
+            .Build());
+        Assert.Equal(SupabasePoolMode.Session5432, session.SupabasePoolMode);
+
+        var trans = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DB_SUPABASE_POOL_6543TRANS_5432SESSION"] = "6543TRANS"
+            })
+            .Build());
+        Assert.Equal(SupabasePoolMode.Transaction6543, trans.SupabasePoolMode);
+
+        var cs = DatabaseUrl.Normalize(
+            "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:5432/postgres",
+            trans);
+        Assert.Contains("Port=6543", cs);
+    }
+
+    [Fact]
+    public void Legacy_false_maps_to_AS_IS()
     {
         var options = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -39,7 +64,7 @@ public class DataAccessOptionsTests
             })
             .Build());
 
-        Assert.False(options.SupabasePool6543TransTo5432Session);
+        Assert.Equal(SupabasePoolMode.AsIs, options.SupabasePoolMode);
 
         var cs = DatabaseUrl.Normalize(
             "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres",

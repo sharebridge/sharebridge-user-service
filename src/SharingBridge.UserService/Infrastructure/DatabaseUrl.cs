@@ -45,14 +45,16 @@ public static class DatabaseUrl
         }
 
         var port = uri.IsDefaultPort ? 5432 : uri.Port;
-        // Supabase transaction pooler (6543) routinely hangs Npgsql ("Timeout during reading").
-        // Session mode on the same host uses 5432 and works with persistent .NET services.
-        // Env: DB_SUPABASE_POOL_6543TRANS_5432SESSION (default true).
-        if (options.SupabasePool6543TransTo5432Session &&
-            port == 6543 &&
-            uri.Host.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase))
+        // Env DB_SUPABASE_POOL_6543TRANS_5432SESSION: 5432SESSION | 6543TRANS | AS_IS
+        // Default 5432SESSION — Npgsql hangs on Supabase transaction pooler (:6543).
+        if (uri.Host.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase))
         {
-            port = 5432;
+            port = options.SupabasePoolMode switch
+            {
+                SupabasePoolMode.Session5432 => 5432,
+                SupabasePoolMode.Transaction6543 => 6543,
+                _ => port
+            };
         }
 
         var builder = new NpgsqlConnectionStringBuilder

@@ -22,9 +22,23 @@ public class DatabaseUrlTests
     {
         var cs = DatabaseUrl.Normalize(
             "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres",
-            new DataAccessOptions { Pooling = true, PoolMaxSize = 5 });
+            new DataAccessOptions
+            {
+                Pooling = true,
+                PoolMaxSize = 5,
+                SupabasePoolMode = SupabasePoolMode.Session5432
+            });
         Assert.Contains("Port=5432", cs);
         Assert.Contains("Pooling=True", cs, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Maximum Pool Size=5", cs, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Can_force_supabase_transaction_pooler_port()
+    {
+        var cs = DatabaseUrl.Normalize(
+            "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:5432/postgres",
+            new DataAccessOptions { SupabasePoolMode = SupabasePoolMode.Transaction6543 });
+        Assert.Contains("Port=6543", cs);
     }
 }
