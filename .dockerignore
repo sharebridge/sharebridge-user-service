@@ -3,7 +3,6 @@
 **/TestResults/
 **/.vs/
 **/.git/
-**/legacy-node/
 **/.env
 **/.env.*
 !**/.env.example

@@ -5,9 +5,7 @@
 ## Status
 
 **Current runtime:** C# / .NET 8 Minimal APIs (Docker on Render).  
-**Legacy:** Node.js MVP kept under [`legacy-node/`](./legacy-node/) for rollback reference only.
-
-Same HTTP contracts as before (web + mobile clients unchanged):
+HTTP contracts match the previous Node service (web + mobile clients unchanged).
 
 | Method | Path | Notes |
 |--------|------|--------|
@@ -19,13 +17,26 @@ Same HTTP contracts as before (web + mobile clients unchanged):
 
 JWT: HS256, claims `sub`, `role`, `roles`, `iss`, `aud`, `iat`, `exp` — must stay compatible with integration-service and photo-service (`AUTH_TOKEN_SECRET` shared).
 
+## Project layout
+
+```text
+src/SharingBridge.UserService/
+  Program.cs                 # DI, middleware, route registration
+  Endpoints/                 # HTTP handlers (Minimal APIs)
+  Services/                  # Google auth, JWT, request auth helpers
+  Repositories/              # IUserStore + Postgres / in-memory
+  Models/                    # DTOs, roles, preset helpers
+  Infrastructure/            # DB URL, pool/retry options, CORS
+tools/MintDevJwt/            # Dev JWT mint (replaces old Node script)
+```
+
 ## Stack placement
 
 | Language | Service |
 |----------|---------|
-| **C#** | **this service** (identity + presets) |
-| Spring Boot | integration / marketplace (planned) |
-| Python | AI orchestration, photo |
+| **C#** | **this service** (identity + presets) — reference for `DB_POOL_*` / `DB_RETRY_*` |
+| Spring Boot | notification-service next, then integration/marketplace |
+| Python | AI orchestration, photo (adopt same `DB_*` names when hardening) |
 | TypeScript | web dashboard |
 
 ## Run locally
@@ -47,6 +58,13 @@ set USER_STORE=memory
 dotnet run --project src/SharingBridge.UserService
 ```
 
+Mint a local JWT (same secret as integration/mobile):
+
+```bash
+set AUTH_TOKEN_SECRET=sharingbridge-dev-secret-change-me
+dotnet run --project tools/MintDevJwt -- demo-user initiator
+```
+
 - Health: `GET http://localhost:8081/health`
 - Docs: [google-auth-setup.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/google-auth-setup.md)
 
@@ -54,11 +72,23 @@ dotnet run --project src/SharingBridge.UserService
 dotnet test
 ```
 
+Test layout mirrors the app:
+
+```text
+tests/SharingBridge.UserService.Tests/
+  Endpoints/          # HTTP contract via WebApplicationFactory
+  Services/           # TokenService
+  Repositories/       # InMemoryUserStore
+  Models/             # Roles, DonorPresetUtils
+  Infrastructure/     # DatabaseUrl, DataAccessOptions, DbRetry
+  Support/            # shared test host
+```
+
 ## Deploy (Render)
 
 `runtime: docker` — see `Dockerfile` and `render.yaml`.
 
-Set in the dashboard (same as before): `DATABASE_URL`, `GOOGLE_CLIENT_ID_WEB`, `WEB_CORS_ORIGINS`, and align `AUTH_TOKEN_SECRET` with integration + photo.
+Set in the dashboard: `DATABASE_URL`, `GOOGLE_CLIENT_ID_WEB`, `WEB_CORS_ORIGINS`, and align `AUTH_TOKEN_SECRET` with integration + photo.
 
 Deploy **before** relying on integration-service auth. [backend-render.md](https://github.com/sharingbridge/sharingbridge/blob/main/configuration/backend-render.md).
 

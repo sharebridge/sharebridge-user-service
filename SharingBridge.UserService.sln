@@ -11,6 +11,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{6EE5B9D3
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharingBridge.UserService.Tests", "tests\SharingBridge.UserService.Tests\SharingBridge.UserService.Tests.csproj", "{6710025D-AE81-49A9-8B23-9AFE7C319AE0}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{D7DE2B00-FEDA-4680-BB2B-7AD2EA18E984}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MintDevJwt", "tools\MintDevJwt\MintDevJwt.csproj", "{B497719D-B935-49AE-8C2C-838C392E2E5A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +32,14 @@ Global
 		{6710025D-AE81-49A9-8B23-9AFE7C319AE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6710025D-AE81-49A9-8B23-9AFE7C319AE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6710025D-AE81-49A9-8B23-9AFE7C319AE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B497719D-B935-49AE-8C2C-838C392E2E5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B497719D-B935-49AE-8C2C-838C392E2E5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B497719D-B935-49AE-8C2C-838C392E2E5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B497719D-B935-49AE-8C2C-838C392E2E5A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{AB488205-2F2B-4EB1-88E1-80914F61A4A1} = {0858DAB6-A6C6-4F55-9C6A-258401C1341D}
 		{6710025D-AE81-49A9-8B23-9AFE7C319AE0} = {6EE5B9D3-4689-4659-9B65-86BFD012B149}
+		{B497719D-B935-49AE-8C2C-838C392E2E5A} = {D7DE2B00-FEDA-4680-BB2B-7AD2EA18E984}
 	EndGlobalSection
 EndGlobal

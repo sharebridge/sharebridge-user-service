@@ -6,7 +6,6 @@ obj/
 .vs/
 
 data/
-legacy-node/node_modules/
 
 
 # Testing
