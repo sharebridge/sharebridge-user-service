@@ -45,16 +45,10 @@ public static class DatabaseUrl
         }
 
         var port = uri.IsDefaultPort ? 5432 : uri.Port;
-        // Env DB_SUPABASE_POOL_6543TRANS_5432SESSION: 5432SESSION | 6543TRANS | AS_IS
-        // Default 5432SESSION — Npgsql hangs on Supabase transaction pooler (:6543).
+        // Env DB_SUPABASE_POOL_6543_4TR_5432_4SESN: 5432 (session) | 6543 (transaction). Default 5432.
         if (uri.Host.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase))
         {
-            port = options.SupabasePoolMode switch
-            {
-                SupabasePoolMode.Session5432 => 5432,
-                SupabasePoolMode.Transaction6543 => 6543,
-                _ => port
-            };
+            port = (int)options.SupabasePoolPort;
         }
 
         var builder = new NpgsqlConnectionStringBuilder

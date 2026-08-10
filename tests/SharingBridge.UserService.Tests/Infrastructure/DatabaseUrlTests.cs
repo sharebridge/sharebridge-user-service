@@ -18,7 +18,7 @@ public class DatabaseUrlTests
     }
 
     [Fact]
-    public void Rewrites_supabase_transaction_pooler_to_session_port()
+    public void Rewrites_supabase_pooler_to_session_port_by_default()
     {
         var cs = DatabaseUrl.Normalize(
             "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres",
@@ -26,7 +26,7 @@ public class DatabaseUrlTests
             {
                 Pooling = true,
                 PoolMaxSize = 5,
-                SupabasePoolMode = SupabasePoolMode.Session5432
+                SupabasePoolPort = SupabasePoolPort.Session
             });
         Assert.Contains("Port=5432", cs);
         Assert.Contains("Pooling=True", cs, StringComparison.OrdinalIgnoreCase);
@@ -38,7 +38,7 @@ public class DatabaseUrlTests
     {
         var cs = DatabaseUrl.Normalize(
             "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:5432/postgres",
-            new DataAccessOptions { SupabasePoolMode = SupabasePoolMode.Transaction6543 });
+            new DataAccessOptions { SupabasePoolPort = SupabasePoolPort.Transaction });
         Assert.Contains("Port=6543", cs);
     }
 }

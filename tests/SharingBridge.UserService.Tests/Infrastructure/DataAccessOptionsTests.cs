@@ -30,23 +30,23 @@ public class DataAccessOptionsTests
     }
 
     [Fact]
-    public void Reads_supabase_pool_mode_5432SESSION_and_6543TRANS()
+    public void Reads_supabase_pool_port_5432_or_6543()
     {
         var session = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["DB_SUPABASE_POOL_6543TRANS_5432SESSION"] = "5432SESSION"
+                ["DB_SUPABASE_POOL_6543_4TR_5432_4SESN"] = "5432"
             })
             .Build());
-        Assert.Equal(SupabasePoolMode.Session5432, session.SupabasePoolMode);
+        Assert.Equal(SupabasePoolPort.Session, session.SupabasePoolPort);
 
         var trans = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["DB_SUPABASE_POOL_6543TRANS_5432SESSION"] = "6543TRANS"
+                ["DB_SUPABASE_POOL_6543_4TR_5432_4SESN"] = "6543"
             })
             .Build());
-        Assert.Equal(SupabasePoolMode.Transaction6543, trans.SupabasePoolMode);
+        Assert.Equal(SupabasePoolPort.Transaction, trans.SupabasePoolPort);
 
         var cs = DatabaseUrl.Normalize(
             "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:5432/postgres",
@@ -55,20 +55,15 @@ public class DataAccessOptionsTests
     }
 
     [Fact]
-    public void Legacy_false_maps_to_AS_IS()
+    public void Rejects_unknown_supabase_pool_port_and_keeps_default()
     {
         var options = DataAccessOptions.FromConfiguration(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["DB_SUPABASE_POOL_6543TRANS_5432SESSION"] = "false"
+                ["DB_SUPABASE_POOL_6543_4TR_5432_4SESN"] = "9999"
             })
             .Build());
 
-        Assert.Equal(SupabasePoolMode.AsIs, options.SupabasePoolMode);
-
-        var cs = DatabaseUrl.Normalize(
-            "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:6543/postgres",
-            options);
-        Assert.Contains("Port=6543", cs);
+        Assert.Equal(SupabasePoolPort.Session, options.SupabasePoolPort);
     }
 }
